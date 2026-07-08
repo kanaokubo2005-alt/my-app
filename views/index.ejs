@@ -5,7 +5,8 @@
   <h1>ユーザー一覧（本番DB接続中）</h1>
   <ul>
     <% users.forEach(user => { %>
-      <li><%= user.name %> (ID: <%= user.id %>)</li>
+      <li><%= user.name %> (<%= user.age ? user.age + '歳' : '年齢未設定' %>)</li>
+
     <% }) %>
   </ul>
   <h2>ユーザー追加</h2>
