@@ -12,7 +12,90 @@ datasource db {
   provider = "postgresql"
 }
 model User {
-  id   Int    @id @default(autoincrement())
-  name String
-  age  Int?   // ? をつけることで、空っぽでもOKにするぞ
+  id            Int            @id @default(autoincrement())
+  name          String
+  age           Int?
+  firebaseUid   String?        @unique
+  googleAccount GoogleAccount?
 }
+
+model GoogleAccount {
+  id           Int      @id @default(autoincrement())
+  userId       Int      @unique
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken  String
+  refreshToken String
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Task {
+  id          Int     @id @default(autoincrement())
+  title       String
+  deadline    String
+  priority    String
+  category    String
+  duration    Int?
+  completed   Boolean @default(false)
+  description String?
+}
+
+model Team {
+  id          Int          @id @default(autoincrement())
+  name        String
+  description String
+  members     TeamMember[]
+  tasks       TeamTask[]
+  sharedFiles SharedFile[]
+  sharedNotes SharedNote[]
+}
+
+model TeamMember {
+  id          Int     @id @default(autoincrement())
+  teamId      Int
+  team        Team    @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  name        String
+  role        String
+  avatarColor String
+  activeTask  String
+  status      String  // "active" | "away" | "completed"
+}
+
+model TeamTask {
+  id          Int     @id @default(autoincrement())
+  teamId      Int
+  team        Team    @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  title       String
+  assignedTo  String
+  progress    Int     @default(0)
+  description String
+  recurrence  String  // "none" | "daily" | "biweekly" | "weekly-days" | "yearly"
+  recurrenceDays String? // serialized JSON array
+  attachments String? // serialized JSON array
+  links       String? // serialized JSON array
+}
+
+model SharedFile {
+  id             Int      @id @default(autoincrement())
+  teamId         Int
+  team           Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  name           String
+  size           String
+  type           String
+  uploadedBy     String
+  associatedTask String
+  uploadedAt     String
+  previewUrl     String?
+}
+
+model SharedNote {
+  id        Int      @id @default(autoincrement())
+  teamId    Int
+  team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  title     String
+  content   String
+  author    String
+  timestamp String
+}
+
