@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "start": "tsx index.ts",
+    "build": "npm install --prefix client && npm run build --prefix client",
     "test": "echo \"Success: no tests specified\" && exit 0"
   },
   "devDependencies": {
