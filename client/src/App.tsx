@@ -29,6 +29,7 @@ import {
 import type { CalendarEvent } from "./lib/firebase";
 
 const INITIAL_TASKS: Task[] = [];
+const API_BASE = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1" ? "http://localhost:8888" : "";
 
 export default function App() {
   // Authentication states
@@ -70,7 +71,7 @@ export default function App() {
   useEffect(() => {
     const fetchTasks = async () => {
       try {
-        const res = await fetch("http://localhost:8888/api/tasks");
+        const res = await fetch(`${API_BASE}/api/tasks`);
         if (res.ok) {
           const data = await res.json();
           setTasks(data);
@@ -213,7 +214,7 @@ export default function App() {
     if (!taskToToggle) return;
     const nextCompleted = !taskToToggle.completed;
     try {
-      const res = await fetch(`http://localhost:8888/api/tasks/${id}`, {
+      const res = await fetch(`${API_BASE}/api/tasks/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ completed: nextCompleted }),
@@ -235,7 +236,7 @@ export default function App() {
   const handleAddTask = async (newTask: Task) => {
     try {
       const { id, ...taskData } = newTask; // strip local temp ID
-      const res = await fetch("http://localhost:8888/api/tasks", {
+      const res = await fetch(`${API_BASE}/api/tasks`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(taskData),
@@ -253,7 +254,7 @@ export default function App() {
   const handleDeleteTask = async (id: string) => {
     if (window.confirm("このタスクを削除しますか？")) {
       try {
-        const res = await fetch(`http://localhost:8888/api/tasks/${id}`, {
+        const res = await fetch(`${API_BASE}/api/tasks/${id}`, {
           method: "DELETE",
         });
         if (res.ok) {
@@ -272,7 +273,7 @@ export default function App() {
       try {
         // Delete all current tasks from server
         for (const task of tasks) {
-          await fetch(`http://localhost:8888/api/tasks/${task.id}`, {
+          await fetch(`${API_BASE}/api/tasks/${task.id}`, {
             method: "DELETE",
           });
         }
@@ -281,7 +282,7 @@ export default function App() {
         const addedTasks: Task[] = [];
         for (const initTask of INITIAL_TASKS) {
           const { id, ...taskData } = initTask; // strip static ID
-          const res = await fetch("http://localhost:8888/api/tasks", {
+          const res = await fetch(`${API_BASE}/api/tasks`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(taskData),

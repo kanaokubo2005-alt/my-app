@@ -84,6 +84,7 @@ interface Team {
 }
 
 const INITIAL_TEAMS: Team[] = [];
+const API_BASE = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1" ? "http://localhost:8888" : "";
 
 export default function TeamSpaceView() {
   const [teams, setTeams] = useState<Team[]>(INITIAL_TEAMS);
@@ -104,7 +105,7 @@ export default function TeamSpaceView() {
   const [showDetailEditor, setShowDetailEditor] = useState(true);
 
   useEffect(() => {
-    fetch("http://localhost:8888/api/teams")
+    fetch(`${API_BASE}/api/teams`)
       .then(res => res.json())
       .then(data => {
         setTeams(data);
@@ -225,7 +226,7 @@ export default function TeamSpaceView() {
     if (!newTeamName.trim()) return;
 
     try {
-      const res = await fetch("http://localhost:8888/api/teams", {
+      const res = await fetch(`${API_BASE}/api/teams`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -258,7 +259,7 @@ export default function TeamSpaceView() {
     const randomColor = colors[Math.floor(Math.random() * colors.length)];
 
     try {
-      const res = await fetch(`http://localhost:8888/api/teams/${activeTeamId}/members`, {
+      const res = await fetch(`${API_BASE}/api/teams/${activeTeamId}/members`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -339,7 +340,7 @@ export default function TeamSpaceView() {
     }
 
     try {
-      const res = await fetch(`http://localhost:8888/api/teams/${activeTeamId}/tasks`, {
+      const res = await fetch(`${API_BASE}/api/teams/${activeTeamId}/tasks`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -414,7 +415,7 @@ export default function TeamSpaceView() {
     if (!activeTeamId) return;
 
     try {
-      const res = await fetch(`http://localhost:8888/api/teams/${activeTeamId}/tasks/${taskId}`, {
+      const res = await fetch(`${API_BASE}/api/teams/${activeTeamId}/tasks/${taskId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ progress: newProg })
@@ -466,7 +467,7 @@ export default function TeamSpaceView() {
     if (!activeTeamId) return;
     if (window.confirm("この共有タスクを削除しますか？")) {
       try {
-        const res = await fetch(`http://localhost:8888/api/teams/${activeTeamId}/tasks/${taskId}`, {
+        const res = await fetch(`${API_BASE}/api/teams/${activeTeamId}/tasks/${taskId}`, {
           method: "DELETE"
         });
         if (res.ok) {

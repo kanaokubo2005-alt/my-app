@@ -13,6 +13,11 @@ import {
 import { requireAuth } from "./middlewares/auth";
 import calendarRouter from "./routes/calendar";
 import { getTodayEvents } from "./services/googleCalendar";
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // PostgreSQL connection config (must configure SSL for Render)
 const pool = new Pool({
@@ -46,8 +51,16 @@ app.use((req, res, next) => {
 
 app.use("/api/calendar", calendarRouter);
 
+// Serve static assets from client/dist
+app.use(express.static(path.join(__dirname, "client/dist")));
+
+// SPA fallback: return client's index.html for non-API routes
+app.get(/^(?!\/api).*$/, (req, res) => {
+  res.sendFile(path.join(__dirname, "client/dist/index.html"));
+});
+
 // Legacy User views routes
-app.get("/", async (req, res) => {
+app.get("/users-legacy", async (req, res) => {
   try {
     const users = await prisma.user.findMany();
     res.render("index", { users });
