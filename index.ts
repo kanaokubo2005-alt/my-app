@@ -88,23 +88,33 @@ app.post("/api/auth/register", async (req, res) => {
   try {
     const { username, password, name } = req.body;
     if (!username || !password || !name) {
-      return res.status(400).json({ error: "Username, password and name are required" });
+      return res.status(400).json({ error: "ユーザーID、パスワード、表示名は必須です。" });
     }
 
+    const rawUsername = String(username).trim();
+
+    // Validate User ID format: at least 8 characters, lowercase letters or digits only
+    const usernameRegex = /^[a-z0-9]{8,}$/;
+    if (!usernameRegex.test(rawUsername)) {
+      return res.status(400).json({ error: "ユーザーIDは8文字以上の小文字または数字で設定してください。" });
+    }
+
+    const normalizedUsername = rawUsername;
+
     const existingUser = await prisma.user.findUnique({
-      where: { username }
+      where: { username: normalizedUsername }
     });
 
     if (existingUser) {
-      return res.status(400).json({ error: "このユーザー名は既に使われています" });
+      return res.status(400).json({ error: "このユーザーIDは既にデータベースに登録されています。別の異なるIDを設定してください。" });
     }
 
     const hashedPassword = hashPassword(password);
     const user = await prisma.user.create({
       data: {
-        username,
+        username: normalizedUsername,
         password: hashedPassword,
-        name,
+        name: name.trim(),
       }
     });
 
@@ -115,7 +125,7 @@ app.post("/api/auth/register", async (req, res) => {
     });
   } catch (error) {
     console.error("Registration error:", error);
-    res.status(500).json({ error: "Failed to register user" });
+    res.status(500).json({ error: "ユーザー登録に失敗しました。入力内容をご確認ください。" });
   }
 });
 
@@ -123,15 +133,16 @@ app.post("/api/auth/login", async (req, res) => {
   try {
     const { username, password } = req.body;
     if (!username || !password) {
-      return res.status(400).json({ error: "Username and password are required" });
+      return res.status(400).json({ error: "ユーザーIDとパスワードが必要です。" });
     }
 
+    const normalizedUsername = String(username).trim().toLowerCase();
     const user = await prisma.user.findUnique({
-      where: { username }
+      where: { username: normalizedUsername }
     });
 
     if (!user || user.password !== hashPassword(password)) {
-      return res.status(401).json({ error: "ユーザー名またはパスワードが正しくありません" });
+      return res.status(401).json({ error: "ユーザーIDまたはパスワードが正しくありません。" });
     }
 
     res.json({
@@ -142,7 +153,7 @@ app.post("/api/auth/login", async (req, res) => {
     });
   } catch (error) {
     console.error("Login error:", error);
-    res.status(500).json({ error: "Failed to login" });
+    res.status(500).json({ error: "ログインに失敗しました。" });
   }
 });
 
@@ -644,6 +655,12 @@ app.post("/api/analyze", requireAuth, async (req: any, res: express.Response) =>
     console.error("Error in POST /api/analyze:", error);
     res.status(500).json({ error: "AI unavailable" });
   }
+});
+
+// Error handling middleware
+app.use((err: any, req: any, res: any, next: any) => {
+  console.error("Unhandled error:", err);
+  res.status(500).json({ error: err.message || "Internal Server Error" });
 });
 
 app.listen(PORT, () => {

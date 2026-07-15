@@ -18,7 +18,7 @@ import FocusSession from "./components/FocusSession";
 import type { Task } from "./types";
 
 const INITIAL_TASKS: Task[] = [];
-const API_BASE = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1" ? "http://localhost:8888" : "";
+const API_BASE = "";
 
 export default function App() {
   // Authentication states
@@ -88,10 +88,31 @@ export default function App() {
   const handleAuthSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg("");
+
+    const normalizedUsername = usernameVal.trim().toLowerCase();
+
+    // Enforce 8+ characters, lowercase letters and numbers format for registration
+    if (isSignUp) {
+      const usernameRegex = /^[a-z0-9]{8,}$/;
+      if (!usernameRegex.test(normalizedUsername)) {
+        setErrorMsg("ユーザーIDは8文字以上の小文字または数字で設定してください。");
+        return;
+      }
+      if (!nameVal.trim()) {
+        setErrorMsg("表示名を入力してください。");
+        return;
+      }
+    }
+
+    if (!passwordVal) {
+      setErrorMsg("パスワードを入力してください。");
+      return;
+    }
+
     const endpoint = isSignUp ? "/api/auth/register" : "/api/auth/login";
     const body = isSignUp 
-      ? { username: usernameVal.trim(), password: passwordVal, name: nameVal.trim() }
-      : { username: usernameVal.trim(), password: passwordVal };
+      ? { username: normalizedUsername, password: passwordVal, name: nameVal.trim() }
+      : { username: normalizedUsername, password: passwordVal };
 
     try {
       const res = await fetch(`${API_BASE}${endpoint}`, {
@@ -106,7 +127,7 @@ export default function App() {
           const loginRes = await fetch(`${API_BASE}/api/auth/login`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ username: usernameVal.trim(), password: passwordVal })
+            body: JSON.stringify({ username: normalizedUsername, password: passwordVal })
           });
           const loginData = await loginRes.json().catch(() => ({}));
           if (loginRes.ok) {
@@ -336,15 +357,16 @@ export default function App() {
             )}
 
             <div>
-              <label className="block text-xs font-bold text-slate-500 mb-1.5">ユーザーID (英数字)</label>
+              <label className="block text-xs font-bold text-slate-500 mb-1.5">ユーザーID (8文字以上の小文字・数字)</label>
               <input
                 type="text"
                 required
-                placeholder="例: okubokana"
+                placeholder="例: okubokana12"
                 value={usernameVal}
                 onChange={(e) => setUsernameVal(e.target.value.toLowerCase())}
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs md:text-sm text-slate-700 focus:outline-hidden focus:bg-white focus:ring-1 focus:ring-cobalt"
               />
+              <span className="text-[10px] text-slate-400 mt-1 block font-semibold">※ 8文字以上の英小文字と数字のみ使用できます</span>
             </div>
 
             <div>
