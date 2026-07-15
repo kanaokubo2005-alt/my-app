@@ -12,12 +12,13 @@ datasource db {
   provider = "postgresql"
 }
 model User {
-  id            Int            @id @default(autoincrement())
-  name          String
-  age           Int?
-  firebaseUid   String?        @unique
+  id       Int          @id @default(autoincrement())
+  username String       @unique
+  password String
+  name     String
+  tasks    Task[]
+  members  TeamMember[]
 }
-
 
 model Task {
   id          Int     @id @default(autoincrement())
@@ -28,6 +29,8 @@ model Task {
   duration    Int?
   completed   Boolean @default(false)
   description String?
+  userId      Int?
+  user        User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Team {
@@ -44,6 +47,8 @@ model TeamMember {
   id          Int     @id @default(autoincrement())
   teamId      Int
   team        Team    @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  userId      Int?
+  user        User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
   name        String
   role        String
   avatarColor String

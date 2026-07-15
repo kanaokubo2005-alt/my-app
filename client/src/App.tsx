@@ -16,22 +16,21 @@ import SettingsView from "./components/SettingsView";
 import TeamSpaceView from "./components/TeamSpaceView";
 import FocusSession from "./components/FocusSession";
 import type { Task } from "./types";
-import type { User } from "firebase/auth";
-import {
-  googleSignIn,
-  logout as firebaseLogout,
-  initAuth,
-  getFirebaseToken,
-} from "./lib/firebase";
 
 const INITIAL_TASKS: Task[] = [];
 const API_BASE = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1" ? "http://localhost:8888" : "";
 
 export default function App() {
   // Authentication states
-  const [user, setUser] = useState<User | null>(null);
-  const [isDemoMode, setIsDemoMode] = useState<boolean>(false);
+  const [user, setUser] = useState<any>(null);
   const [authLoading, setAuthLoading] = useState<boolean>(true);
+  
+  // Custom Auth Form States
+  const [isSignUp, setIsSignUp] = useState<boolean>(false);
+  const [usernameVal, setUsernameVal] = useState<string>("");
+  const [passwordVal, setPasswordVal] = useState<string>("");
+  const [nameVal, setNameVal] = useState<string>("");
+  const [errorMsg, setErrorMsg] = useState<string>("");
 
   // Tab & UI States
   const [currentTab, setCurrentTab] = useState<string>("dashboard");
@@ -41,28 +40,25 @@ export default function App() {
   // Modals state
   const [activeFocusTask, setActiveFocusTask] = useState<Task | null>(null);
 
-
-  // Notification and theme settings states
+  // Theme settings
   const [theme, setTheme] = useState<string>("light");
-  const [notificationSettings, setNotificationSettings] = useState({
-    deadline24h: true,
-    start5m: true,
-    nothingDoneAlert: true,
-    channelBrowser: true,
-    channelEmail: false,
-    channelMobile: false,
-    suppressStart: "23:00",
-    suppressEnd: "07:00",
-    suppressEnabled: true,
-  });
 
   const [tasks, setTasks] = useState<Task[]>([]);
 
-  // Load tasks from backend API on mount
+  // Load tasks from backend API when user changes
   useEffect(() => {
     const fetchTasks = async () => {
+      if (!user) {
+        setTasks([]);
+        return;
+      }
       try {
-        const res = await fetch(`${API_BASE}/api/tasks`);
+        const token = localStorage.getItem("todone_user_token");
+        const res = await fetch(`${API_BASE}/api/tasks`, {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        });
         if (res.ok) {
           const data = await res.json();
           setTasks(data);
@@ -72,71 +68,85 @@ export default function App() {
       }
     };
     fetchTasks();
-  }, []);
+  }, [user]);
 
-
-
-  const [notificationCount, setNotificationCount] = useState<number>(3);
-
-  // Initialize Firebase Auth
+  // Restore session on mount
   useEffect(() => {
-    const unsubscribe = initAuth(
-      (currentUser) => {
-        setUser(currentUser);
-        setIsDemoMode(false);
-        setAuthLoading(false);
-      },
-      () => {
-        // If not authenticated or token not in memory, see if we have demo mode saved
-        const demo = sessionStorage.getItem("todone_demo");
-        if (demo === "true") {
-          setIsDemoMode(true);
-        }
-        setAuthLoading(false);
-      },
-    );
-    return () => unsubscribe();
+    const token = localStorage.getItem("todone_user_token");
+    const storedUser = localStorage.getItem("todone_user");
+    if (token && storedUser) {
+      try {
+        setUser(JSON.parse(storedUser));
+      } catch (e) {
+        localStorage.removeItem("todone_user_token");
+        localStorage.removeItem("todone_user");
+      }
+    }
+    setAuthLoading(false);
   }, []);
+
+  const handleAuthSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMsg("");
+    const endpoint = isSignUp ? "/api/auth/register" : "/api/auth/login";
+    const body = isSignUp 
+      ? { username: usernameVal.trim(), password: passwordVal, name: nameVal.trim() }
+      : { username: usernameVal.trim(), password: passwordVal };
+
+    try {
+      const res = await fetch(`${API_BASE}${endpoint}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body)
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        if (isSignUp) {
+          // Auto log in after register
+          const loginRes = await fetch(`${API_BASE}/api/auth/login`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username: usernameVal.trim(), password: passwordVal })
+          });
+          const loginData = await loginRes.json().catch(() => ({}));
+          if (loginRes.ok) {
+            localStorage.setItem("todone_user_token", loginData.token);
+            localStorage.setItem("todone_user", JSON.stringify(loginData));
+            setUser(loginData);
+          } else {
+            setErrorMsg("登録されましたが、自動ログインに失敗しました。ログインしてください。");
+            setIsSignUp(false);
+          }
+        } else {
+          localStorage.setItem("todone_user_token", data.token);
+          localStorage.setItem("todone_user", JSON.stringify(data));
+          setUser(data);
+        }
+        setUsernameVal("");
+        setPasswordVal("");
+        setNameVal("");
+      } else {
+        setErrorMsg(data.error || "認証に失敗しました");
+      }
+    } catch (err) {
+      console.error("Auth error:", err);
+      setErrorMsg("サーバー通信エラーが発生しました");
+    }
+  };
+
+  const handleLogout = () => {
+    if (window.confirm("ログアウトしますか？")) {
+      localStorage.removeItem("todone_user_token");
+      localStorage.removeItem("todone_user");
+      setUser(null);
+    }
+  };
 
 
   useEffect(() => {
     localStorage.setItem("todone_tasks", JSON.stringify(tasks));
   }, [tasks]);
 
-
-
-  const handleGoogleLogin = async () => {
-    try {
-      setAuthLoading(true);
-      const result = await googleSignIn();
-      if (result) {
-        setUser(result);
-        setIsDemoMode(false);
-        sessionStorage.removeItem("todone_demo");
-      }
-    } catch (error) {
-      console.error("Login failed:", error);
-      alert(
-        "Google ログインに失敗しました。詳細についてはコンソールをご確認ください。",
-      );
-    } finally {
-      setAuthLoading(false);
-    }
-  };
-
-  const handleDemoModeLogin = () => {
-    setIsDemoMode(true);
-    sessionStorage.setItem("todone_demo", "true");
-  };
-
-  const handleLogout = async () => {
-    if (window.confirm("ログアウトしますか？")) {
-      await firebaseLogout();
-      setUser(null);
-      setIsDemoMode(false);
-      sessionStorage.removeItem("todone_demo");
-    }
-  };
 
   const handleToggleTask = async (id: string) => {
     const taskToToggle = tasks.find((t) => t.id === id);
@@ -145,7 +155,10 @@ export default function App() {
     try {
       const res = await fetch(`${API_BASE}/api/tasks/${id}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("todone_user_token")}`
+        },
         body: JSON.stringify({ completed: nextCompleted }),
       });
       if (res.ok) {
@@ -153,9 +166,6 @@ export default function App() {
         setTasks((prev) =>
           prev.map((task) => (task.id === id ? updated : task))
         );
-        if (nextCompleted) {
-          setNotificationCount((c) => Math.max(0, c - 1));
-        }
       }
     } catch (err) {
       console.error("Error toggling task:", err);
@@ -164,16 +174,18 @@ export default function App() {
 
   const handleAddTask = async (newTask: Task) => {
     try {
-      const { id, ...taskData } = newTask; // strip local temp ID
+      const { id, ...taskData } = newTask;
       const res = await fetch(`${API_BASE}/api/tasks`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("todone_user_token")}`
+        },
         body: JSON.stringify(taskData),
       });
       if (res.ok) {
         const created = await res.json();
         setTasks((prev) => [created, ...prev]);
-        setNotificationCount((c) => c + 1);
       }
     } catch (err) {
       console.error("Error adding task:", err);
@@ -185,6 +197,9 @@ export default function App() {
       try {
         const res = await fetch(`${API_BASE}/api/tasks/${id}`, {
           method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("todone_user_token")}`
+          }
         });
         if (res.ok) {
           setTasks((prev) => prev.filter((task) => task.id !== id));
@@ -195,33 +210,18 @@ export default function App() {
     }
   };
 
-
-
   const handleResetTasks = async () => {
-    if (window.confirm("全てのタスクをリセットし、初期データに戻しますか？")) {
+    if (window.confirm("全てのタスクをリセットしますか？")) {
       try {
-        // Delete all current tasks from server
         for (const task of tasks) {
           await fetch(`${API_BASE}/api/tasks/${task.id}`, {
             method: "DELETE",
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("todone_user_token")}`
+            }
           });
         }
-
-        // Create INITIAL_TASKS on server
-        const addedTasks: Task[] = [];
-        for (const initTask of INITIAL_TASKS) {
-          const { id, ...taskData } = initTask; // strip static ID
-          const res = await fetch(`${API_BASE}/api/tasks`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(taskData),
-          });
-          if (res.ok) {
-            const created = await res.json();
-            addedTasks.push(created);
-          }
-        }
-        setTasks(addedTasks);
+        setTasks([]);
       } catch (err) {
         console.error("Error resetting tasks:", err);
       }
@@ -264,8 +264,6 @@ export default function App() {
             onResetTasks={handleResetTasks}
             user={user}
             onLogout={handleLogout}
-            notificationSettings={notificationSettings}
-            setNotificationSettings={setNotificationSettings}
             theme={theme}
             setTheme={setTheme}
           />
@@ -291,11 +289,11 @@ export default function App() {
     );
   }
 
-  // 2. Google OAuth Sign-in Screen (if not logged in AND not in demo mode)
-  if (!user && !isDemoMode) {
+  // 2. Custom Login & Register Screen
+  if (!user) {
     return (
       <div className="min-h-screen bg-[#F7F9FC] flex items-center justify-center p-4 font-sans text-slate-700 select-none">
-        <div className="w-full max-w-md bg-white rounded-2xl border border-slate-100 p-8 shadow-xl flex flex-col justify-between relative overflow-hidden space-y-8 animate-fade-in">
+        <div className="w-full max-w-md bg-white rounded-2xl border border-slate-100 p-8 shadow-xl flex flex-col justify-between relative overflow-hidden space-y-6 animate-fade-in">
           {/* Subtle decoration */}
           <div className="absolute right-0 top-0 w-32 h-32 bg-cobalt/5 rounded-full blur-2xl -z-10" />
 
@@ -312,85 +310,74 @@ export default function App() {
               </p>
             </div>
             <p className="text-slate-500 text-xs leading-relaxed max-w-xs mx-auto">
-              大学生向けのAIスケジュール・タスク管理Webアプリ。Googleカレンダーと連携して自動で空き時間に課題を割り当てます。
+              大学生向けのタスク管理・ゼミ共同作業スペース同期Webアプリ。
             </p>
           </div>
 
-          {/* Core Feature bullet points inside a clean visual box */}
-          <div className="bg-slate-50 border border-slate-100 rounded-xl p-4 space-y-3.5 text-xs text-slate-600">
-            <div className="flex items-start gap-3">
-              <span className="w-5 h-5 rounded-md bg-cobalt/10 text-cobalt flex items-center justify-center shrink-0 font-bold">
-                📅
-              </span>
-              <div>
-                <p className="font-bold text-slate-700">Googleカレンダー同期</p>
-                <p className="text-slate-400 text-[10px] mt-0.5">
-                  授業やアルバイトの空き時間をインテリジェントに抽出
-                </p>
+          <form onSubmit={handleAuthSubmit} className="space-y-4">
+            {errorMsg && (
+              <div className="p-3 bg-rose-50 border border-rose-100 rounded-xl text-xs text-rose-500 font-semibold text-center">
+                {errorMsg}
               </div>
-            </div>
-            <div className="flex items-start gap-3">
-              <span className="w-5 h-5 rounded-md bg-cobalt/10 text-cobalt flex items-center justify-center shrink-0 font-bold">
-                🤖
-              </span>
-              <div>
-                <p className="font-bold text-slate-700">AIタスク自動割り当て</p>
-                <p className="text-slate-400 text-[10px] mt-0.5">
-                  今日やるべきタスクを最適な時間帯で自動推薦
-                </p>
-              </div>
-            </div>
-            <div className="flex items-start gap-3">
-              <span className="w-5 h-5 rounded-md bg-cobalt/10 text-cobalt flex items-center justify-center shrink-0 font-bold">
-                ⏱️
-              </span>
-              <div>
-                <p className="font-bold text-slate-700">Focus Session</p>
-                <p className="text-slate-400 text-[10px] mt-0.5">
-                  コバルトブルーを基調とした洗練されたポモドーロタイマー
-                </p>
-              </div>
-            </div>
-          </div>
+            )}
 
-          <div className="space-y-3">
-            {/* Elegant Sign-In Button */}
+            {isSignUp && (
+              <div>
+                <label className="block text-xs font-bold text-slate-500 mb-1.5">表示名 (お名前)</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="例: 大久保 佳奈"
+                  value={nameVal}
+                  onChange={(e) => setNameVal(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs md:text-sm text-slate-700 focus:outline-hidden focus:bg-white focus:ring-1 focus:ring-cobalt"
+                />
+              </div>
+            )}
+
+            <div>
+              <label className="block text-xs font-bold text-slate-500 mb-1.5">ユーザーID (英数字)</label>
+              <input
+                type="text"
+                required
+                placeholder="例: okubokana"
+                value={usernameVal}
+                onChange={(e) => setUsernameVal(e.target.value.toLowerCase())}
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs md:text-sm text-slate-700 focus:outline-hidden focus:bg-white focus:ring-1 focus:ring-cobalt"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-500 mb-1.5">パスワード</label>
+              <input
+                type="password"
+                required
+                placeholder="••••••••"
+                value={passwordVal}
+                onChange={(e) => setPasswordVal(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs md:text-sm text-slate-700 focus:outline-hidden focus:bg-white focus:ring-1 focus:ring-cobalt"
+              />
+            </div>
+
             <button
-              onClick={handleGoogleLogin}
-              className="w-full flex items-center justify-center gap-3 px-4 py-3 border border-slate-200 hover:border-slate-300 rounded-xl text-slate-700 font-bold text-sm bg-white hover:bg-slate-50 transition-all cursor-pointer shadow-2xs group"
+              type="submit"
+              className="w-full bg-cobalt hover:bg-cobalt/95 text-white font-bold py-3 rounded-xl text-xs md:text-sm shadow-md shadow-cobalt/10 hover:shadow-lg transition-all cursor-pointer flex items-center justify-center gap-1.5"
             >
-              <svg
-                version="1.1"
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 48 48"
-                className="w-5 h-5 group-hover:scale-105 transition-transform"
-              >
-                <path
-                  fill="#EA4335"
-                  d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"
-                ></path>
-                <path
-                  fill="#4285F4"
-                  d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"
-                ></path>
-                <path
-                  fill="#FBBC05"
-                  d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"
-                ></path>
-                <path
-                  fill="#34A853"
-                  d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"
-                ></path>
-              </svg>
-              <span>Google アカウントでログイン</span>
+              <LogIn className="w-4 h-4" />
+              <span>{isSignUp ? "新規登録してログイン" : "ログイン"}</span>
             </button>
+          </form>
 
-            {/* Demo Mode Button for quick review */}
+          <div className="text-center">
             <button
-              onClick={handleDemoModeLogin}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-slate-400 font-semibold text-xs hover:text-slate-600 hover:bg-slate-50 transition-colors cursor-pointer"
+              type="button"
+              onClick={() => {
+                setIsSignUp(!isSignUp);
+                setErrorMsg("");
+              }}
+              className="text-xs text-cobalt hover:underline font-bold"
             >
-              <span>カレンダー連携せずに、デモモードで利用する</span>
+              {isSignUp ? "すでにアカウントをお持ちですか？ ログイン" : "新しいアカウントを作成する (新規登録)"}
             </button>
           </div>
 
@@ -428,8 +415,6 @@ export default function App() {
         setCurrentTab={setCurrentTab}
         isOpen={sidebarOpen}
         setIsOpen={setSidebarOpen}
-        notificationCount={notificationCount}
-        clearNotifications={() => setNotificationCount(0)}
         user={user}
       />
 

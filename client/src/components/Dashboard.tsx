@@ -12,12 +12,12 @@ import {
   AlertCircle,
   Trash2,
   ListPlus,
-  Bell,
   LogOut,
   User as UserIcon,
   Info
 } from "lucide-react";
 import type { Task } from "../types";
+import TaskCalendar from "./TaskCalendar";
 
 interface DashboardProps {
   tasks: Task[];
@@ -42,13 +42,12 @@ export default function Dashboard({
   user,
   onLogout
 }: DashboardProps) {
-  const [notificationOpen, setNotificationOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
 
   // Get current greeting based on hour
   const getGreeting = () => {
     const hour = new Date().getHours();
-    const userName = user?.displayName || "ゲスト";
+    const userName = user?.name || "ゲスト";
     if (hour < 12) return `おはようございます、${userName}さん`;
     if (hour < 18) return `こんにちは、${userName}さん`;
     return `こんばんは、${userName}さん`;
@@ -107,49 +106,7 @@ export default function Dashboard({
     }
   };
 
-  // Get dynamic notifications list for display
-  const getDynamicNotifications = () => {
-    const list = [];
-    const d = new Date();
-    const todayStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    
-    // 1. Task due tomorrow (24h before deadline)
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const tomorrowStr = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, '0')}-${String(tomorrow.getDate()).padStart(2, '0')}`;
-    
-    const tasksDueTomorrow = tasks.filter(t => !t.completed && t.deadline.startsWith(tomorrowStr));
-    tasksDueTomorrow.forEach(t => {
-      list.push({
-        id: `due-${t.id}`,
-        title: "締切24時間前！",
-        message: `課題「${t.title}」の提出締切が24時間以内に迫っています。`,
-        type: "alert",
-        time: "1日前"
-      });
-    });
 
-
-
-    // 3. Nothing completed yet today nudge
-    const completedToday = tasks.filter(t => t.completed).length;
-
-    if (completedToday === 0 && tasks.filter(t => !t.completed).length > 0) {
-      list.push({
-        id: "nothing-done-nudge",
-        title: "本日のアドバイス",
-        message: "今日まだ何も終わっていません。まずは5分間だけ「Focus Session」を始めてみませんか？",
-        type: "nudge",
-        time: "朝"
-      });
-    }
-
-    return list;
-  };
-
-  // Get simulated or Google Calendar events for Today
-
-  const notificationsList = getDynamicNotifications();
 
   return (
     <div className="flex-1 overflow-y-auto bg-slate-bg p-4 md:p-8 space-y-6 md:space-y-8 animate-fade-in relative">
@@ -195,71 +152,23 @@ export default function Dashboard({
             />
           </div>
 
-          {/* Notification Button */}
-          <div className="relative">
-            <button
-              onClick={() => {
-                setNotificationOpen(!notificationOpen);
-                setProfileOpen(false);
-              }}
-              className={`p-2.5 rounded-xl border border-slate-100 bg-white hover:bg-slate-50 text-slate-500 transition-colors cursor-pointer relative shadow-2xs`}
-              title="通知"
-            >
-              <Bell className="w-4.5 h-4.5" />
-              {notificationsList.length > 0 && (
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-500 rounded-full ring-2 ring-white animate-pulse" />
-              )}
-            </button>
-
-            {/* Notification Dropdown Panel */}
-            {notificationOpen && (
-              <div className="absolute right-0 mt-2.5 w-80 bg-white border border-slate-100 rounded-2xl shadow-xl z-50 p-4 space-y-3">
-                <div className="flex items-center justify-between border-b border-slate-50 pb-2.5">
-                  <span className="font-sans font-bold text-xs text-slate-800 uppercase tracking-wider">お知らせ通知</span>
-                  <span className="text-[10px] bg-cobalt/10 text-cobalt font-bold px-2 py-0.5 rounded-full">
-                    {notificationsList.length}件
-                  </span>
-                </div>
-                <div className="space-y-2.5 max-h-60 overflow-y-auto pr-1">
-                  {notificationsList.length === 0 ? (
-                    <p className="text-slate-400 text-xs py-4 text-center">現在、新しい通知はありません。</p>
-                  ) : (
-                    notificationsList.map((notif) => (
-                      <div key={notif.id} className="p-3 bg-slate-50 rounded-xl border border-slate-100 flex items-start gap-2.5">
-                        <AlertCircle className={`w-4 h-4 shrink-0 mt-0.5 ${
-                          notif.type === "alert" ? "text-rose-500" : notif.type === "event" ? "text-cobalt" : "text-amber-500"
-                        }`} />
-                        <div className="text-xs">
-                          <p className="font-bold text-slate-800">{notif.title}</p>
-                          <p className="text-slate-500 text-[11px] leading-relaxed mt-0.5">{notif.message}</p>
-                          <span className="text-[9px] text-slate-400 block mt-1 font-semibold">{notif.time}</span>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-
           {/* Profile Dropdown Trigger */}
           <div className="relative">
             <button
               onClick={() => {
                 setProfileOpen(!profileOpen);
-                setNotificationOpen(false);
               }}
               className="w-10 h-10 rounded-xl bg-cobalt/10 text-cobalt border border-slate-100 flex items-center justify-center font-bold text-sm shadow-2xs hover:bg-cobalt/15 transition-colors cursor-pointer"
             >
-              {user?.displayName ? user.displayName.slice(0, 2).toUpperCase() : "G"}
+              {user?.name ? user.name.slice(0, 2).toUpperCase() : "G"}
             </button>
 
             {/* Profile actions dropdown */}
             {profileOpen && (
               <div className="absolute right-0 mt-2.5 w-56 bg-white border border-slate-100 rounded-2xl shadow-xl z-50 p-4 space-y-3 text-xs">
                 <div className="border-b border-slate-50 pb-2">
-                  <span className="block font-bold text-slate-800">{user?.displayName || "ゲスト"}</span>
-                  <span className="block text-[10px] text-slate-400 mt-0.5">{user?.email || "guest@todone.app"}</span>
+                  <span className="block font-bold text-slate-800">{user?.name || "ゲスト"}</span>
+                  <span className="block text-[10px] text-slate-400 mt-0.5">ユーザーID: {user?.id || "N/A"}</span>
                 </div>
                 <div className="space-y-1">
                   <div className="flex items-center gap-2 p-2 rounded-lg hover:bg-slate-50 text-slate-600 font-medium">
@@ -442,6 +351,9 @@ export default function Dashboard({
           </div>
         )}
       </div>
+
+      {/* 2.5 Task Monthly Calendar */}
+      <TaskCalendar tasks={tasks} onToggleTask={onToggleTask} />
 
       {/* 3. Stats Summary Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

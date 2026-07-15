@@ -11,6 +11,7 @@ import {
 import { requireAuth } from "./middlewares/auth";
 import path from "path";
 import { fileURLToPath } from "url";
+import crypto from "crypto";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -45,8 +46,6 @@ app.use((req, res, next) => {
   next();
 });
 
-
-
 // Serve static assets from client/dist
 app.use(express.static(path.join(__dirname, "client/dist")));
 
@@ -70,12 +69,80 @@ app.post("/users", async (req, res) => {
   try {
     const name = req.body.name;
     if (name) {
-      await prisma.user.create({ data: { name } });
+      await prisma.user.create({ data: { name, username: name.toLowerCase(), password: "password" } });
     }
     res.redirect("/");
   } catch (error) {
     console.error("Error creating user:", error);
     res.status(500).send("Internal Server Error");
+  }
+});
+
+const hashPassword = (password: string) => {
+  return crypto.createHash("sha256").update(password).digest("hex");
+};
+
+// --- Authentication API ---
+
+app.post("/api/auth/register", async (req, res) => {
+  try {
+    const { username, password, name } = req.body;
+    if (!username || !password || !name) {
+      return res.status(400).json({ error: "Username, password and name are required" });
+    }
+
+    const existingUser = await prisma.user.findUnique({
+      where: { username }
+    });
+
+    if (existingUser) {
+      return res.status(400).json({ error: "このユーザー名は既に使われています" });
+    }
+
+    const hashedPassword = hashPassword(password);
+    const user = await prisma.user.create({
+      data: {
+        username,
+        password: hashedPassword,
+        name,
+      }
+    });
+
+    res.status(201).json({
+      id: user.id,
+      username: user.username,
+      name: user.name,
+    });
+  } catch (error) {
+    console.error("Registration error:", error);
+    res.status(500).json({ error: "Failed to register user" });
+  }
+});
+
+app.post("/api/auth/login", async (req, res) => {
+  try {
+    const { username, password } = req.body;
+    if (!username || !password) {
+      return res.status(400).json({ error: "Username and password are required" });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { username }
+    });
+
+    if (!user || user.password !== hashPassword(password)) {
+      return res.status(401).json({ error: "ユーザー名またはパスワードが正しくありません" });
+    }
+
+    res.json({
+      id: user.id,
+      username: user.username,
+      name: user.name,
+      token: String(user.id),
+    });
+  } catch (error) {
+    console.error("Login error:", error);
+    res.status(500).json({ error: "Failed to login" });
   }
 });
 
@@ -103,11 +170,30 @@ const getDynamicPriority = (deadlineStr: string, originalPriority: string): stri
 };
 
 // 1. Get all tasks
-app.get("/api/tasks", async (req, res) => {
+app.get("/api/tasks", requireAuth, async (req: any, res) => {
   try {
     const tasks = await prisma.task.findMany({
+      where: { userId: req.userId },
       orderBy: { id: "asc" },
     });
+
+    // Seed default tasks when a new user checks tasks for the first time
+    if (tasks.length === 0) {
+      const seedTasksData = [
+        { title: "ゼミの発表スライド作成", deadline: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], priority: "high", category: "study", duration: 60, userId: req.userId },
+        { title: "英語のレポート提出", deadline: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], priority: "medium", category: "study", duration: 90, userId: req.userId },
+        { title: "アルバイトのシフト調整", deadline: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], priority: "low", category: "other", duration: 15, userId: req.userId }
+      ];
+      for (const tData of seedTasksData) {
+        await prisma.task.create({ data: tData });
+      }
+      const newTasks = await prisma.task.findMany({
+        where: { userId: req.userId },
+        orderBy: { id: "asc" },
+      });
+      return res.json(newTasks.map(t => ({ ...t, id: String(t.id), priority: getDynamicPriority(t.deadline, t.priority) })));
+    }
+
     // Format id as string and apply dynamic priority logic
     const formatted = tasks.map((t) => ({
       ...t,
@@ -122,7 +208,7 @@ app.get("/api/tasks", async (req, res) => {
 });
 
 // 2. Create a task
-app.post("/api/tasks", async (req, res) => {
+app.post("/api/tasks", requireAuth, async (req: any, res) => {
   try {
     const { title, deadline, priority, category, duration, completed, description } = req.body;
     if (!title || !deadline || !priority || !category) {
@@ -137,6 +223,7 @@ app.post("/api/tasks", async (req, res) => {
         duration: (duration === undefined || duration === null || duration === "") ? null : Number(duration),
         completed: Boolean(completed),
         description: description || null,
+        userId: req.userId,
       },
     });
     res.status(201).json({
@@ -151,7 +238,7 @@ app.post("/api/tasks", async (req, res) => {
 });
 
 // 3. Update a task
-app.put("/api/tasks/:id", async (req, res) => {
+app.put("/api/tasks/:id", requireAuth, async (req: any, res) => {
   try {
     const id = parseInt(req.params.id, 10);
     if (isNaN(id)) {
@@ -171,7 +258,7 @@ app.put("/api/tasks/:id", async (req, res) => {
     if (description !== undefined) data.description = description;
 
     const task = await prisma.task.update({
-      where: { id },
+      where: { id, userId: req.userId },
       data,
     });
     res.json({
@@ -186,14 +273,14 @@ app.put("/api/tasks/:id", async (req, res) => {
 });
 
 // 4. Delete a task
-app.delete("/api/tasks/:id", async (req, res) => {
+app.delete("/api/tasks/:id", requireAuth, async (req: any, res) => {
   try {
     const id = parseInt(req.params.id, 10);
     if (isNaN(id)) {
       return res.status(400).json({ error: "Invalid task ID" });
     }
     await prisma.task.delete({
-      where: { id },
+      where: { id, userId: req.userId },
     });
     res.status(204).send();
   } catch (error) {
@@ -205,9 +292,16 @@ app.delete("/api/tasks/:id", async (req, res) => {
 // --- Team & Collaboration API ---
 
 // 1. Get all teams with members, tasks, notes, files
-app.get("/api/teams", async (req, res) => {
+app.get("/api/teams", requireAuth, async (req: any, res) => {
   try {
     const teams = await prisma.team.findMany({
+      where: {
+        members: {
+          some: {
+            userId: req.userId
+          }
+        }
+      },
       include: {
         members: true,
         tasks: true,
@@ -217,15 +311,16 @@ app.get("/api/teams", async (req, res) => {
       orderBy: { id: "asc" },
     });
 
-    // If no teams exist, create a default University Joint Team
+    // If no teams exist, create a default University Joint Team for this user
     if (teams.length === 0) {
+      const user = await prisma.user.findUnique({ where: { id: req.userId } });
       const defaultTeam = await prisma.team.create({
         data: {
           name: "大学合同ゼミチーム",
           description: "ゼミ・共同研究プロジェクトのタスク・情報管理スペース",
           members: {
             create: [
-              { name: "大久保 佳奈", role: "管理者 (You)", avatarColor: "bg-cobalt", activeTask: "初期チーム設定と計画", status: "active" },
+              { userId: req.userId, name: user?.name || "メンバー", role: "管理者 (You)", avatarColor: "bg-cobalt", activeTask: "初期チーム設定と計画", status: "active" },
               { name: "山田 太郎", role: "リサーチャー", avatarColor: "bg-emerald-500", activeTask: "先行文献調査", status: "active" },
               { name: "佐藤 花子", role: "デザイナー", avatarColor: "bg-pink-500", activeTask: "スライド資料デザイン", status: "away" },
             ]
@@ -234,7 +329,7 @@ app.get("/api/teams", async (req, res) => {
             create: [
               {
                 title: "キックオフミーティングの開催",
-                assignedTo: "大久保 佳奈",
+                assignedTo: user?.name || "メンバー",
                 progress: 10,
                 description: "チーム発足に当たり、アジェンダ設定、役割分担の確認、目標の合意形成を行う。",
                 recurrence: "none",
@@ -253,7 +348,7 @@ app.get("/api/teams", async (req, res) => {
         {
           ...defaultTeam,
           id: String(defaultTeam.id),
-          members: defaultTeam.members.map(m => ({ ...m, id: String(m.id) })),
+          members: defaultTeam.members.map(m => ({ ...m, id: String(m.id), userId: m.userId ? String(m.userId) : undefined })),
           tasks: defaultTeam.tasks.map(t => ({
             ...t,
             id: String(t.id),
@@ -270,7 +365,7 @@ app.get("/api/teams", async (req, res) => {
     const formatted = teams.map((team) => ({
       ...team,
       id: String(team.id),
-      members: team.members.map(m => ({ ...m, id: String(m.id) })),
+      members: team.members.map(m => ({ ...m, id: String(m.id), userId: m.userId ? String(m.userId) : undefined })),
       tasks: team.tasks.map(t => ({
         ...t,
         id: String(t.id),
@@ -290,10 +385,12 @@ app.get("/api/teams", async (req, res) => {
 });
 
 // 2. Create a team
-app.post("/api/teams", async (req, res) => {
+app.post("/api/teams", requireAuth, async (req: any, res) => {
   try {
     const { name, description } = req.body;
     if (!name) return res.status(400).json({ error: "Team name is required" });
+
+    const user = await prisma.user.findUnique({ where: { id: req.userId } });
 
     const team = await prisma.team.create({
       data: {
@@ -301,7 +398,7 @@ app.post("/api/teams", async (req, res) => {
         description: description || "共同作業タスク・情報管理スペース",
         members: {
           create: [
-            { name: "大久保 佳奈", role: "管理者 (You)", avatarColor: "bg-cobalt", activeTask: "初期チーム設定と計画", status: "active" }
+            { userId: req.userId, name: user?.name || "メンバー", role: "管理者 (You)", avatarColor: "bg-cobalt", activeTask: "初期チーム設定と計画", status: "active" }
           ]
         }
       },
@@ -316,7 +413,7 @@ app.post("/api/teams", async (req, res) => {
     res.json({
       ...team,
       id: String(team.id),
-      members: team.members.map(m => ({ ...m, id: String(m.id) })),
+      members: team.members.map(m => ({ ...m, id: String(m.id), userId: m.userId ? String(m.userId) : undefined })),
       tasks: team.tasks.map(t => ({
         ...t,
         id: String(t.id),
@@ -334,16 +431,33 @@ app.post("/api/teams", async (req, res) => {
 });
 
 // 3. Add member to team
-app.post("/api/teams/:teamId/members", async (req, res) => {
+app.post("/api/teams/:teamId/members", requireAuth, async (req: any, res) => {
   try {
     const teamId = parseInt(req.params.teamId, 10);
-    const { name, role, avatarColor, activeTask, status } = req.body;
-    if (!name || !role) return res.status(400).json({ error: "Name and role are required" });
+    const { userId, role, avatarColor, activeTask, status } = req.body;
+    if (!userId || !role) return res.status(400).json({ error: "User ID and role are required" });
+
+    const targetUser = await prisma.user.findUnique({
+      where: { id: parseInt(userId, 10) }
+    });
+
+    if (!targetUser) {
+      return res.status(404).json({ error: "指定されたユーザーIDが見つかりません" });
+    }
+
+    // Verify user is not already in team
+    const existingMember = await prisma.teamMember.findFirst({
+      where: { teamId, userId: targetUser.id }
+    });
+    if (existingMember) {
+      return res.status(400).json({ error: "このユーザーは既にチームに参加しています" });
+    }
 
     const member = await prisma.teamMember.create({
       data: {
         teamId,
-        name,
+        userId: targetUser.id,
+        name: targetUser.name,
         role,
         avatarColor: avatarColor || "bg-cobalt",
         activeTask: activeTask || "未アサインのタスク",

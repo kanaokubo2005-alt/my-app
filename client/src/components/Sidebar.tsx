@@ -3,23 +3,18 @@ import {
   CheckSquare, 
   BarChart3, 
   Settings as SettingsIcon, 
-  Bell, 
   Menu, 
   X,
   GraduationCap,
   Users
 } from "lucide-react";
 
-import type { User } from "firebase/auth";
-
 interface SidebarProps {
   currentTab: string;
   setCurrentTab: (tab: string) => void;
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
-  notificationCount: number;
-  clearNotifications: () => void;
-  user?: User | null;
+  user?: any;
 }
 
 export default function Sidebar({
@@ -27,12 +22,10 @@ export default function Sidebar({
   setCurrentTab,
   isOpen,
   setIsOpen,
-  notificationCount,
-  clearNotifications,
   user
 }: SidebarProps) {
-  const displayName = user?.displayName || "ゲスト";
-  const userEmail = user?.email || "guest@todone.app";
+  const displayName = user?.name || "ゲスト";
+  const userEmail = user?.username ? `@${user.username}` : "未ログイン";
   const getInitials = (name: string) => {
     return name
       .split(" ")
@@ -126,16 +119,6 @@ export default function Sidebar({
               <span className="text-xs text-slate-400 block truncate max-w-[120px]">{userEmail}</span>
             </div>
           </div>
-
-          <button 
-            onClick={clearNotifications}
-            className="relative p-2 text-slate-400 hover:text-slate-600 rounded-xl hover:bg-slate-50 transition-all duration-200"
-          >
-            <Bell className="w-5 h-5" />
-            {notificationCount > 0 && (
-              <span className="absolute top-1 right-1 w-2 h-2 bg-rose-500 rounded-full ring-2 ring-white animate-pulse" />
-            )}
-          </button>
         </div>
       </aside>
     </>

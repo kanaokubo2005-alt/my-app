@@ -87,6 +87,14 @@ const INITIAL_TEAMS: Team[] = [];
 const API_BASE = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1" ? "http://localhost:8888" : "";
 
 export default function TeamSpaceView() {
+  const getAuthHeaders = (extra: Record<string, string> = {}) => {
+    const token = localStorage.getItem("todone_user_token");
+    return {
+      ...extra,
+      ...(token ? { Authorization: `Bearer ${token}` } : {})
+    };
+  };
+
   const [teams, setTeams] = useState<Team[]>(INITIAL_TEAMS);
   
   // Selected Team ID (null means List View of all teams)
@@ -105,7 +113,9 @@ export default function TeamSpaceView() {
   const [showDetailEditor, setShowDetailEditor] = useState(true);
 
   useEffect(() => {
-    fetch(`${API_BASE}/api/teams`)
+    fetch(`${API_BASE}/api/teams`, {
+      headers: getAuthHeaders()
+    })
       .then(res => res.json())
       .then(data => {
         setTeams(data);
@@ -156,7 +166,7 @@ export default function TeamSpaceView() {
   };
 
   // New Member Form States
-  const [newMemberName, setNewMemberName] = useState("");
+  const [newMemberUserId, setNewMemberUserId] = useState("");
   const [newMemberRole, setNewMemberRole] = useState("");
   const [newMemberTask, setNewMemberTask] = useState("");
 
@@ -228,7 +238,7 @@ export default function TeamSpaceView() {
     try {
       const res = await fetch(`${API_BASE}/api/teams`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: getAuthHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify({
           name: newTeamName.trim(),
           description: newTeamDesc.trim() || "学生メンバーの共同作業タスク・情報管理スペース"
@@ -253,7 +263,7 @@ export default function TeamSpaceView() {
   // Add Member to Current Active Team
   const handleAddMember = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!activeTeamId || !newMemberName.trim() || !newMemberRole.trim()) return;
+    if (!activeTeamId || !newMemberUserId.trim() || !newMemberRole.trim()) return;
 
     const colors = ["bg-emerald-500", "bg-amber-500", "bg-purple-500", "bg-rose-500", "bg-cyan-500", "bg-pink-500"];
     const randomColor = colors[Math.floor(Math.random() * colors.length)];
@@ -261,34 +271,37 @@ export default function TeamSpaceView() {
     try {
       const res = await fetch(`${API_BASE}/api/teams/${activeTeamId}/members`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: getAuthHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify({
-          name: newMemberName.trim(),
+          userId: parseInt(newMemberUserId.trim(), 10),
           role: newMemberRole.trim(),
           avatarColor: randomColor,
           activeTask: newMemberTask.trim() || "未アサインのタスク",
           status: "active"
         })
       });
+      const data = await res.json().catch(() => ({}));
       if (res.ok) {
-        const createdMember = await res.json();
         setTeams(prev => prev.map(t => {
           if (t.id === activeTeamId) {
             return {
               ...t,
               memberCount: t.memberCount + 1,
-              members: [...t.members, createdMember]
+              members: [...t.members, data]
             };
           }
           return t;
         }));
-        setNewMemberName("");
+        setNewMemberUserId("");
         setNewMemberRole("");
         setNewMemberTask("");
         setShowAddMember(false);
+      } else {
+        alert(data.error || "指定されたユーザーIDが見つかりませんでした");
       }
     } catch (err) {
       console.error("Error adding member:", err);
+      alert("メンバー追加エラーが発生しました。");
     }
   };
 
@@ -342,7 +355,7 @@ export default function TeamSpaceView() {
     try {
       const res = await fetch(`${API_BASE}/api/teams/${activeTeamId}/tasks`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: getAuthHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify({
           title: cmdTaskTitle.trim(),
           assignedTo: assignedMember,
@@ -417,7 +430,7 @@ export default function TeamSpaceView() {
     try {
       const res = await fetch(`${API_BASE}/api/teams/${activeTeamId}/tasks/${taskId}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: getAuthHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify({ progress: newProg })
       });
       if (res.ok) {
@@ -468,7 +481,8 @@ export default function TeamSpaceView() {
     if (window.confirm("この共有タスクを削除しますか？")) {
       try {
         const res = await fetch(`${API_BASE}/api/teams/${activeTeamId}/tasks/${taskId}`, {
-          method: "DELETE"
+          method: "DELETE",
+          headers: getAuthHeaders()
         });
         if (res.ok) {
           setTeams(prev => prev.map(t => {
@@ -1380,13 +1394,13 @@ export default function TeamSpaceView() {
 
             <form onSubmit={handleAddMember} className="space-y-4 text-xs md:text-sm">
               <div>
-                <label className="block text-slate-500 font-bold mb-1.5">メンバー名</label>
+                <label className="block text-slate-500 font-bold mb-1.5">招待ユーザーID (数字)</label>
                 <input 
-                  type="text" 
+                  type="number" 
                   required
-                  placeholder="例: 加藤 美咲"
-                  value={newMemberName}
-                  onChange={(e) => setNewMemberName(e.target.value)}
+                  placeholder="例: 3 (マイページから確認可能)"
+                  value={newMemberUserId}
+                  onChange={(e) => setNewMemberUserId(e.target.value)}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-slate-700 focus:outline-hidden focus:bg-white focus:ring-1 focus:ring-cobalt"
                 />
               </div>

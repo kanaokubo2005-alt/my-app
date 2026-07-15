@@ -33,13 +33,7 @@ export default function AnalyticsView({ tasks, onToggleTask }: AnalyticsViewProp
   const totalFocusMinutes = completedTasksList.reduce((acc, t) => acc + (t.duration ?? 0), 0);
   const totalFocusHours = (totalFocusMinutes / 60).toFixed(1);
 
-  // Priority Stats
-  const getPrioCount = (prio: "high" | "medium" | "low") => {
-    return tasks.filter(t => t.priority === prio).length;
-  };
-  const getPrioCompletedCount = (prio: "high" | "medium" | "low") => {
-    return tasks.filter(t => t.priority === prio && t.completed).length;
-  };
+
 
   const getPriorityBadgeClass = (p: string) => {
     switch (p) {
@@ -191,48 +185,7 @@ export default function AnalyticsView({ tasks, onToggleTask }: AnalyticsViewProp
           </div>
         </div>
 
-        {/* Priority Analysis Cards */}
-        <div className="bg-white border border-slate-100 rounded-2xl p-6 shadow-xs space-y-5">
-          <div className="border-b border-slate-50 pb-3">
-            <h2 className="font-sans font-bold text-slate-800 text-sm md:text-base flex items-center gap-2">
-              <BarChart3 className="w-5 h-5 text-cobalt" />
-              <span>優先度別の完了率</span>
-            </h2>
-          </div>
 
-          <div className="grid grid-cols-3 gap-4">
-            {/* High */}
-            <div className="bg-rose-50/30 border border-rose-100/30 rounded-xl p-4 text-center space-y-2">
-              <span className="block text-[11px] font-bold text-rose-600">High</span>
-              <span className="block font-sans font-extrabold text-slate-700 text-lg md:text-xl">
-                {getPrioCompletedCount("high")} / {getPrioCount("high")}
-              </span>
-              <span className="block text-[10px] text-slate-400">件 完了</span>
-            </div>
-
-            {/* Medium */}
-            <div className="bg-amber-50/30 border border-amber-100/30 rounded-xl p-4 text-center space-y-2">
-              <span className="block text-[11px] font-bold text-amber-600">Medium</span>
-              <span className="block font-sans font-extrabold text-slate-700 text-lg md:text-xl">
-                {getPrioCompletedCount("medium")} / {getPrioCount("medium")}
-              </span>
-              <span className="block text-[10px] text-slate-400">件 完了</span>
-            </div>
-
-            {/* Low */}
-            <div className="bg-emerald-50/30 border border-emerald-100/30 rounded-xl p-4 text-center space-y-2">
-              <span className="block text-[11px] font-bold text-emerald-600">Low</span>
-              <span className="block font-sans font-extrabold text-slate-700 text-lg md:text-xl">
-                {getPrioCompletedCount("low")} / {getPrioCount("low")}
-              </span>
-              <span className="block text-[10px] text-slate-400">件 完了</span>
-            </div>
-          </div>
-
-          <div className="p-4 bg-slate-50 border border-slate-100 rounded-xl text-xs text-slate-500 leading-normal">
-            💡 <span className="font-bold text-slate-700">アドバイス:</span> High優先度のタスク消化率は重要です。最優先で完了させることで、週全体のストレス値を大幅に下げることができます。
-          </div>
-        </div>
 
       </div>
 
