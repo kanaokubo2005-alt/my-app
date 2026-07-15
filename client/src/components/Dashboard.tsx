@@ -18,7 +18,6 @@ import {
   Info
 } from "lucide-react";
 import type { Task } from "../types";
-import type { CalendarEvent } from "../lib/firebase";
 
 interface DashboardProps {
   tasks: Task[];
@@ -28,7 +27,6 @@ interface DashboardProps {
   onDeleteTask: (id: string) => void;
   searchQuery: string;
   setSearchQuery: (query: string) => void;
-  calendarEvents: CalendarEvent[];
   user: any;
   onLogout: () => void;
 }
@@ -41,7 +39,6 @@ export default function Dashboard({
   onDeleteTask,
   searchQuery,
   setSearchQuery,
-  calendarEvents,
   user,
   onLogout
 }: DashboardProps) {
@@ -132,17 +129,7 @@ export default function Dashboard({
       });
     });
 
-    // 2. Upcoming events (5 minutes before starting - simulated from today's timeline)
-    const todayEvents = getTodayTimelineEvents();
-    if (todayEvents.length > 0) {
-      list.push({
-        id: "start-5m",
-        title: "開始予定5分前",
-        message: `次の予定「${todayEvents[0].summary}」がまもなく開始されます。準備しましょう。`,
-        type: "event",
-        time: "5分前"
-      });
-    }
+
 
     // 3. Nothing completed yet today nudge
     const completedToday = tasks.filter(t => t.completed).length;
@@ -161,61 +148,7 @@ export default function Dashboard({
   };
 
   // Get simulated or Google Calendar events for Today
-  const getTodayTimelineEvents = () => {
-    const d = new Date();
-    const todayStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    const events = calendarEvents.filter(event => {
-      const startVal = event.start?.dateTime || event.start?.date || "";
-      return startVal.startsWith(todayStr);
-    });
 
-    if (events.length > 0) {
-      return events.map(e => {
-        let timeLabel = "終日";
-        let startHour = 9;
-        if (e.start?.dateTime) {
-          const s = new Date(e.start.dateTime);
-          const formatTime = (d: Date) => d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-          timeLabel = `${formatTime(s)}〜${formatTime(new Date(e.end?.dateTime || ""))}`;
-          startHour = s.getHours();
-        }
-        return {
-          id: e.id,
-          summary: e.summary || "予定",
-          time: timeLabel,
-          hour: startHour,
-          type: e.summary?.includes("アルバイト") ? "job" : e.summary?.includes("研究室") ? "lab" : "class"
-        };
-      });
-    }
-
-    // Default Fallback Mock Schedule
-    return [
-      {
-        id: "mock-1",
-        summary: "憲法講義 (法学講義)",
-        time: "9:00〜10:30",
-        hour: 9,
-        type: "class"
-      },
-      {
-        id: "mock-2",
-        summary: "ゼミ研究室発表準備",
-        time: "13:00〜15:00",
-        hour: 13,
-        type: "lab"
-      },
-      {
-        id: "mock-3",
-        summary: "居酒屋アルバイト",
-        time: "18:00〜22:00",
-        hour: 18,
-        type: "job"
-      }
-    ];
-  };
-
-  const todayEvents = getTodayTimelineEvents();
   const notificationsList = getDynamicNotifications();
 
   return (
@@ -332,10 +265,6 @@ export default function Dashboard({
                   <div className="flex items-center gap-2 p-2 rounded-lg hover:bg-slate-50 text-slate-600 font-medium">
                     <UserIcon className="w-4 h-4" />
                     <span>マイアカウント</span>
-                  </div>
-                  <div className="flex items-center gap-2 p-2 rounded-lg hover:bg-slate-50 text-slate-600 font-medium">
-                    <Calendar className="w-4 h-4" />
-                    <span className="text-emerald-600 font-bold">Google連携中</span>
                   </div>
                 </div>
                 <button
@@ -560,59 +489,6 @@ export default function Dashboard({
           </div>
         </div>
       </div>
-
-      {/* 4. Today's Schedule Timeline */}
-      <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="font-sans font-bold text-slate-800 text-sm md:text-base">Today's Schedule</h2>
-            <span className="text-[9px] bg-emerald-50 text-emerald-600 font-bold px-2 py-0.5 rounded-full border border-emerald-100 flex items-center gap-1 scale-95">
-              <Calendar className="w-2.5 h-2.5" />
-              <span>Google Calendar</span>
-            </span>
-          </div>
-
-
-          <div className="bg-white border border-slate-100 rounded-2xl p-4 shadow-xs space-y-3">
-            <div className="space-y-3 relative before:absolute before:left-2 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-100">
-              {todayEvents.slice(0, 3).map((event) => {
-                let badgeClass = "bg-cobalt/10 text-cobalt border-cobalt/15";
-                let dotClass = "bg-cobalt";
-                
-                if (event.type === "job") {
-                  badgeClass = "bg-amber-50 text-amber-600 border-amber-100";
-                  dotClass = "bg-amber-500";
-                } else if (event.type === "lab") {
-                  badgeClass = "bg-purple-50 text-purple-600 border-purple-100";
-                  dotClass = "bg-purple-500";
-                }
-
-                return (
-                  <div key={event.id} className="relative pl-6 group flex gap-2">
-                    {/* Circle marker */}
-                    <div className={`absolute left-0.5 top-1 w-2.5 h-2.5 rounded-full border-2 border-white ${dotClass} ring-1 ring-slate-100 shadow-2xs z-10 transition-transform group-hover:scale-110`} />
-                    
-                    <div className="flex-1 space-y-0.5 bg-slate-50/50 hover:bg-slate-50 rounded-lg p-2.5 border border-slate-100/50 transition-colors">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-[9px] font-bold text-slate-400">{event.time}</span>
-                        <span className={`text-[8px] font-bold px-1 py-0.2 rounded border uppercase ${badgeClass}`}>
-                          {event.type === "job" ? "バイト" : event.type === "lab" ? "研究室" : "授業"}
-                        </span>
-                      </div>
-                      <h4 className="font-sans font-bold text-[11px] text-slate-700 leading-snug truncate group-hover:text-cobalt transition-colors">
-                        {event.summary}
-                      </h4>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-            
-            <div className="text-[9px] text-slate-400 bg-slate-50 p-2 rounded-lg border border-slate-100/60 flex items-start gap-1">
-              <Info className="w-3 h-3 text-cobalt shrink-0 mt-0.5" />
-              <span>Google Calendarから予定を同期し、空き時間を自動算出します。</span>
-            </div>
-          </div>
-        </div>
-      </div>
+    </div>
   );
 }

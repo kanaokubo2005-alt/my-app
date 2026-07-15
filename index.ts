@@ -5,14 +5,10 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "./generated/prisma/client";
 import { 
   generateChatReply, 
-  generateRecommendation, 
   generateTaskSplit, 
-  generateSchedule, 
   generateAnalysis 
 } from "./services/ai";
 import { requireAuth } from "./middlewares/auth";
-import calendarRouter from "./routes/calendar";
-import { getTodayEvents } from "./services/googleCalendar";
 import path from "path";
 import { fileURLToPath } from "url";
 
@@ -49,7 +45,7 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use("/api/calendar", calendarRouter);
+
 
 // Serve static assets from client/dist
 app.use(express.static(path.join(__dirname, "client/dist")));
@@ -500,89 +496,7 @@ app.delete("/api/teams/:teamId/tasks/:taskId", async (req, res) => {
 });
 
 
-// --- Google Calendar Mock Helpers (for guests/fallback) ---
-const getMockCalendarEvents = (): any[] => {
-  const d = new Date();
-  const todayStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  return [
-    {
-      id: "mock-1",
-      summary: "憲法講義 (法学講義)",
-      start: { dateTime: `${todayStr}T09:00:00` },
-      end: { dateTime: `${todayStr}T10:30:00` }
-    },
-    {
-      id: "mock-2",
-      summary: "ゼミ研究室発表準備",
-      start: { dateTime: `${todayStr}T13:00:00` },
-      end: { dateTime: `${todayStr}T15:00:00` }
-    },
-    {
-      id: "mock-3",
-      summary: "居酒屋アルバイト",
-      start: { dateTime: `${todayStr}T17:00:00` },
-      end: { dateTime: `${todayStr}T21:00:00` }
-    }
-  ];
-};
 
-// --- AI API Endpoints ---
-
-// 5. Chat with AI
-app.post("/api/chat", requireAuth, async (req: any, res: express.Response) => {
-  try {
-    const { messages, tasks, message } = req.body;
-    
-    // Validation
-    if (messages !== undefined && !Array.isArray(messages)) {
-      return res.status(400).json({ error: "Invalid messages format" });
-    }
-    if (message !== undefined && typeof message !== "string") {
-      return res.status(400).json({ error: "Invalid message format" });
-    }
-
-    // Retrieve active tasks and user info from Prisma to personalize context
-    const tasksToUse = tasks || (await prisma.task.findMany({ where: { completed: false } }));
-    
-    const reply = await generateChatReply(messages, tasksToUse, message);
-    res.json({ reply });
-  } catch (error) {
-    console.error("Error in POST /api/chat:", error);
-    const configured = process.env.GEMINI_API_KEY?.trim();
-    res.status(configured ? 502 : 503).json({
-      error: configured ? "AI service is unavailable" : "AI service is not configured. Set GEMINI_API_KEY on the server."
-    });
-  }
-});
-
-// 6. Get task recommendations
-app.post("/api/recommend", requireAuth, async (req: any, res: express.Response) => {
-  try {
-    let events = [];
-    try {
-      const headerToken = req.headers["x-google-token"] as string | undefined;
-      const gEvents = await getTodayEvents(req.userId!, headerToken);
-      events = gEvents.map(e => ({
-        id: e.id,
-        summary: e.title,
-        start: { dateTime: e.start },
-        end: { dateTime: e.end }
-      }));
-    } catch (err) {
-      console.warn("Failed to get Google Calendar events, using mocks:", err);
-      events = getMockCalendarEvents();
-    }
-    
-    // Retrieve incomplete tasks
-    const incompleteTasks = await prisma.task.findMany({ where: { completed: false } });
-
-    const recommendation = await generateRecommendation(incompleteTasks, events);
-    res.json(recommendation);
-  } catch (error) {
-    console.error("Error in POST /api/recommend:", error);
-    res.status(500).json({ error: "AI unavailable" });
-  }
-});
 
 // 7. Split a task into smaller subtasks
 app.post("/api/split-task", requireAuth, async (req: any, res: express.Response) => {
@@ -602,35 +516,7 @@ app.post("/api/split-task", requireAuth, async (req: any, res: express.Response)
   }
 });
 
-// 8. Generate daily schedule
-app.post("/api/schedule", requireAuth, async (req: any, res: express.Response) => {
-  try {
-    const { currentTime } = req.body;
 
-    let events = [];
-    try {
-      const headerToken = req.headers["x-google-token"] as string | undefined;
-      const gEvents = await getTodayEvents(req.userId!, headerToken);
-      events = gEvents.map(e => ({
-        id: e.id,
-        summary: e.title,
-        start: { dateTime: e.start },
-        end: { dateTime: e.end }
-      }));
-    } catch (err) {
-      console.warn("Failed to get Google Calendar events, using mocks:", err);
-      events = getMockCalendarEvents();
-    }
-
-    const incompleteTasks = await prisma.task.findMany({ where: { completed: false } });
-
-    const schedule = await generateSchedule(incompleteTasks, events, currentTime);
-    res.json(schedule);
-  } catch (error) {
-    console.error("Error in POST /api/schedule:", error);
-    res.status(500).json({ error: "AI unavailable" });
-  }
-});
 
 // 9. Analyze completed tasks
 app.post("/api/analyze", requireAuth, async (req: any, res: express.Response) => {

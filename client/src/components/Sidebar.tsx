@@ -1,7 +1,6 @@
 import { 
   LayoutDashboard, 
   CheckSquare, 
-  Calendar as CalendarIcon, 
   BarChart3, 
   Settings as SettingsIcon, 
   Bell, 
@@ -46,7 +45,6 @@ export default function Sidebar({
   const menuItems = [
     { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
     { id: "tasks", label: "Tasks", icon: CheckSquare },
-    { id: "calendar", label: "Calendar", icon: CalendarIcon },
     { id: "team", label: "Team Space", icon: Users },
     { id: "analytics", label: "Analytics", icon: BarChart3 },
     { id: "settings", label: "Settings", icon: SettingsIcon },

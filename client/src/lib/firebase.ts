@@ -47,9 +47,6 @@ export const initAuth = (
 
 export const googleSignIn = async (): Promise<User | null> => {
   try {
-    // Add Google Calendar API scope
-    provider.addScope("https://www.googleapis.com/auth/calendar");
-
     const result = await signInWithPopup(auth, provider);
     const credential = GoogleAuthProvider.credentialFromResult(result);
     const token = credential?.accessToken;
@@ -68,63 +65,6 @@ export const logout = async () => {
   await signOut(auth);
 };
 
-// Fetch Google Calendar events
-export interface CalendarEvent {
-  id: string;
-  summary: string;
-  start: {
-    dateTime?: string;
-    date?: string;
-  };
-  end: {
-    dateTime?: string;
-    date?: string;
-  };
-  description?: string;
-  color?: string;
-  textColor?: string;
-}
-
 export const getFirebaseToken = async (): Promise<string | null> => {
   return auth.currentUser ? await auth.currentUser.getIdToken() : null;
-};
-
-export const fetchCalendarEvents = async (): Promise<CalendarEvent[]> => {
-  try {
-    const firebaseToken = await getFirebaseToken();
-    if (!firebaseToken) return [];
-
-    const googleToken = localStorage.getItem("todone_google_token");
-    const response = await fetch("/api/calendar/events", {
-      headers: {
-        Authorization: `Bearer ${firebaseToken}`,
-        ...(googleToken ? { "X-Google-Token": googleToken } : {})
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error("Failed to fetch calendar events from backend API");
-    }
-
-    const data = await response.json();
-    
-    // Map backend DTO to local format expected by components
-    return (data || []).map((item: any) => ({
-      id: item.id,
-      summary: item.title,
-      start: {
-        dateTime: item.start
-      },
-      end: {
-        dateTime: item.end
-      },
-      description: item.description || "",
-      location: item.location || "",
-      color: item.color,
-      textColor: item.textColor,
-    }));
-  } catch (error) {
-    console.error("Error fetching calendar events from backend:", error);
-    return [];
-  }
 };

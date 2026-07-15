@@ -8,7 +8,6 @@ import {
   Settings, 
   ShieldAlert, 
   GraduationCap,
-  Calendar,
   Bell,
   Check,
   ToggleLeft,
@@ -19,8 +18,6 @@ interface SettingsViewProps {
   onResetTasks: () => void;
   user: any;
   onLogout: () => void;
-  googleCalendarSynced: boolean;
-  setGoogleCalendarSynced: (synced: boolean) => void;
   notificationSettings: {
     deadline24h: boolean;
     start5m: boolean;
@@ -51,8 +48,6 @@ export default function SettingsView({
   onResetTasks,
   user,
   onLogout,
-  googleCalendarSynced,
-  setGoogleCalendarSynced,
   notificationSettings,
   setNotificationSettings,
   theme,
@@ -153,43 +148,6 @@ export default function SettingsView({
           </form>
         </div>
 
-        {/* 2. Google Calendar Synchronization */}
-        <div className="bg-white border border-slate-100 rounded-2xl p-6 shadow-xs space-y-5">
-          <div className="border-b border-slate-50 pb-3 flex items-center gap-2 text-slate-800">
-            <Calendar className="w-5 h-5 text-cobalt" />
-            <h2 className="font-sans font-bold text-sm md:text-base">Google Calendar同期設定</h2>
-          </div>
-
-          <div className="space-y-4 text-xs md:text-sm">
-            <div className="p-4 bg-slate-50 border border-slate-100 rounded-xl flex items-center justify-between">
-              <div>
-                <span className="block font-bold text-slate-700">カレンダー自動同期</span>
-                <span className="text-[10px] text-slate-400">Google カレンダーの予定をバックグラウンドで常に同期します</span>
-              </div>
-              <button 
-                onClick={() => setGoogleCalendarSynced(!googleCalendarSynced)}
-                className="text-cobalt cursor-pointer"
-              >
-                {googleCalendarSynced ? (
-                  <ToggleRight className="w-10 h-10 stroke-[1.5]" />
-                ) : (
-                  <ToggleLeft className="w-10 h-10 text-slate-300 stroke-[1.5]" />
-                )}
-              </button>
-            </div>
-
-            <div className="p-4 bg-cobalt/5 border border-cobalt-light/10 rounded-xl space-y-2">
-              <span className="font-bold text-cobalt text-xs block">カレンダー連携ステータス</span>
-              <p className="text-slate-600 text-[11px] leading-relaxed">
-                現在、Google Calendar APIを通じて「主カレンダー (primary)」の予定を自動でインポートしています。講義スケジュール、アルバイト、部活動の予定を瞬時に検出し、AIスケジュール提案に組み込みます。
-              </p>
-              <div className="flex items-center gap-1.5 mt-2">
-                <span className="w-2 h-2 bg-emerald-500 rounded-full animate-ping"></span>
-                <span className="text-[10px] text-emerald-600 font-bold">API通信中・同期完了</span>
-              </div>
-            </div>
-          </div>
-        </div>
 
         {/* 3. Notification Settings */}
         <div className="bg-white border border-slate-100 rounded-2xl p-6 shadow-xs space-y-5">

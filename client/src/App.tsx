@@ -11,7 +11,6 @@ import {
 import Sidebar from "./components/Sidebar";
 import Dashboard from "./components/Dashboard";
 import TasksView from "./components/TasksView";
-import CalendarView from "./components/CalendarView";
 import AnalyticsView from "./components/AnalyticsView";
 import SettingsView from "./components/SettingsView";
 import TeamSpaceView from "./components/TeamSpaceView";
@@ -22,11 +21,8 @@ import {
   googleSignIn,
   logout as firebaseLogout,
   initAuth,
-  fetchCalendarEvents,
   getFirebaseToken,
 } from "./lib/firebase";
-
-import type { CalendarEvent } from "./lib/firebase";
 
 const INITIAL_TASKS: Task[] = [];
 const API_BASE = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1" ? "http://localhost:8888" : "";
@@ -45,11 +41,6 @@ export default function App() {
   // Modals state
   const [activeFocusTask, setActiveFocusTask] = useState<Task | null>(null);
 
-  // Google Calendar Integration states
-  const [googleCalendarSynced, setGoogleCalendarSynced] =
-    useState<boolean>(false);
-  const [showConsentModal, setShowConsentModal] = useState<boolean>(true);
-  const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
 
   // Notification and theme settings states
   const [theme, setTheme] = useState<string>("light");
@@ -107,68 +98,6 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
-  // Check Google Calendar Sync Status whenever user logs in
-  useEffect(() => {
-    const checkCalendarSync = async () => {
-      if (!user) {
-        setGoogleCalendarSynced(false);
-        return;
-      }
-      try {
-        const token = await getFirebaseToken();
-        if (!token) return;
-        const googleToken = localStorage.getItem("todone_google_token");
-        const res = await fetch("/api/calendar/status", {
-          headers: { 
-            Authorization: `Bearer ${token}`,
-            ...(googleToken ? { "X-Google-Token": googleToken } : {})
-          }
-        });
-        if (res.ok) {
-          const data = await res.json();
-          setGoogleCalendarSynced(data.synced);
-          if (data.synced) {
-            setShowConsentModal(false);
-          }
-        }
-      } catch (err) {
-        console.error("Failed to fetch calendar status:", err);
-      }
-    };
-    checkCalendarSync();
-  }, [user]);
-
-  const handleConfirmGoogleSync = async () => {
-    try {
-      await handleGoogleCalendarSync();
-    } catch (err) {
-      console.error("Failed to start Google sync flow:", err);
-      const detail = err instanceof Error ? err.message : "不明なエラー";
-      alert(`Googleカレンダー連携を開始できませんでした。\n\n詳細: ${detail}`);
-    }
-  };
-
-  const handleRefreshCalendar = async () => {
-    if (!user) return;
-    const events = await fetchCalendarEvents();
-    setCalendarEvents(events);
-  };
-
-  const handleGoogleCalendarSync = async () => {
-    const firebaseToken = await getFirebaseToken();
-    if (!firebaseToken) throw new Error("ログイン情報を取得できませんでした");
-    const response = await fetch("/api/calendar/auth-url", {
-      headers: { Authorization: `Bearer ${firebaseToken}` },
-    });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok || !data.url) throw new Error(data.error || "Google Calendar authorization could not start");
-    window.location.assign(data.url);
-  };
-
-  // Fetch Calendar Events when user changes
-  useEffect(() => {
-    handleRefreshCalendar();
-  }, [user, googleCalendarSynced]);
 
   useEffect(() => {
     localStorage.setItem("todone_tasks", JSON.stringify(tasks));
@@ -311,7 +240,6 @@ export default function App() {
             onDeleteTask={handleDeleteTask}
             searchQuery={searchQuery}
             setSearchQuery={setSearchQuery}
-            calendarEvents={calendarEvents}
             user={user}
             onLogout={handleLogout}
           />
@@ -326,17 +254,6 @@ export default function App() {
             onStartFocusSession={(task) => setActiveFocusTask(task)}
           />
         );
-      case "calendar":
-        return (
-          <CalendarView
-            tasks={tasks}
-            onToggleTask={handleToggleTask}
-            calendarEvents={calendarEvents}
-            onStartFocusSession={(task) => setActiveFocusTask(task)}
-            onRefreshCalendar={handleRefreshCalendar}
-            onGoogleSync={handleGoogleCalendarSync}
-          />
-        );
       case "team":
         return <TeamSpaceView />;
       case "analytics":
@@ -347,8 +264,6 @@ export default function App() {
             onResetTasks={handleResetTasks}
             user={user}
             onLogout={handleLogout}
-            googleCalendarSynced={googleCalendarSynced}
-            setGoogleCalendarSynced={setGoogleCalendarSynced}
             notificationSettings={notificationSettings}
             setNotificationSettings={setNotificationSettings}
             theme={theme}
@@ -532,65 +447,6 @@ export default function App() {
         />
       )}
 
-      {/* --- GOOGLE CALENDAR CONSENT MODAL --- */}
-      {!googleCalendarSynced && !isDemoMode && showConsentModal && user && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 border border-slate-100 shadow-2xl space-y-5 text-center relative animate-fade-in">
-            <div className="w-16 h-16 rounded-2xl bg-cobalt/10 text-cobalt flex items-center justify-center mx-auto mb-2 text-3xl">
-              📅
-            </div>
-            <div className="space-y-2">
-              <h2 className="font-sans font-bold text-slate-800 text-lg md:text-xl">
-                Googleカレンダー連携の確認
-              </h2>
-              <p className="text-slate-500 text-xs md:text-sm leading-relaxed">
-                ToDoneは、AI（Gemini）があなたの講義やアルバイトの空き時間を分析し、最適なタスク計画をスケジュールへ自動割り当てする機能を提供します。
-              </p>
-            </div>
-
-            <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 text-left text-xs text-slate-600 space-y-3">
-              <p className="font-bold text-slate-700 pb-1 border-b border-slate-100 flex items-center gap-1.5">
-                <span className="w-1.5 h-3.5 bg-cobalt rounded-full inline-block"></span>
-                連携される権限
-              </p>
-              <div className="flex items-start gap-2.5">
-                <span className="text-emerald-500 font-bold">✓</span>
-                <div>
-                  <p className="font-bold text-slate-700">カレンダーの予定の読み取り</p>
-                  <p className="text-slate-400 text-[10px] mt-0.5">空いている時間帯を分析して、タスクを配置します。</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-2.5">
-                <span className="text-emerald-500 font-bold">✓</span>
-                <div>
-                  <p className="font-bold text-slate-700">カレンダーの予定の追加・変更・削除</p>
-                  <p className="text-slate-400 text-[10px] mt-0.5">アプリ内で追加・編集した予定をGoogleカレンダーと即時同期します。</p>
-                </div>
-              </div>
-            </div>
-
-            <p className="text-[10px] text-slate-400 leading-normal">
-              ※お客様の許可なくカレンダー情報の公開や外部サービスへの共有を行うことは一切ありません。
-            </p>
-
-            <div className="flex flex-col gap-2 pt-2">
-              <button
-                onClick={handleConfirmGoogleSync}
-                className="w-full bg-cobalt text-white font-bold py-3 rounded-xl text-xs md:text-sm shadow-md hover:bg-cobalt/95 transition-all cursor-pointer flex items-center justify-center gap-2"
-              >
-                <Sparkles className="w-4 h-4 animate-pulse" />
-                <span>連携を許可して進む</span>
-              </button>
-              <button
-                onClick={() => setShowConsentModal(false)}
-                className="w-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-2.5 rounded-xl text-xs md:text-sm transition-all cursor-pointer"
-              >
-                後で設定する（カレンダー機能制限あり）
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
