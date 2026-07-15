@@ -331,20 +331,7 @@ app.get("/api/teams", requireAuth, async (req: any, res) => {
           description: "ゼミ・共同研究プロジェクトのタスク・情報管理スペース",
           members: {
             create: [
-              { userId: req.userId, name: user?.name || "メンバー", role: "管理者 (You)", avatarColor: "bg-cobalt", activeTask: "初期チーム設定と計画", status: "active" },
-              { name: "山田 太郎", role: "リサーチャー", avatarColor: "bg-emerald-500", activeTask: "先行文献調査", status: "active" },
-              { name: "佐藤 花子", role: "デザイナー", avatarColor: "bg-pink-500", activeTask: "スライド資料デザイン", status: "away" },
-            ]
-          },
-          tasks: {
-            create: [
-              {
-                title: "キックオフミーティングの開催",
-                assignedTo: user?.name || "メンバー",
-                progress: 10,
-                description: "チーム発足に当たり、アジェンダ設定、役割分担の確認、目標の合意形成を行う。",
-                recurrence: "none",
-              }
+              { userId: req.userId, name: user?.name || "メンバー", role: "管理者 (You)", avatarColor: "bg-cobalt", activeTask: "初期計画", status: "active" },
             ]
           }
         },

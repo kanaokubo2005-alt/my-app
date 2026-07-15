@@ -297,7 +297,8 @@ export default function TeamSpaceView() {
         setNewMemberTask("");
         setShowAddMember(false);
       } else {
-        alert(data.error || "指定されたユーザーIDが見つかりませんでした");
+        alert(`${data.error || "指定されたユーザーIDが見つかりませんでした。"} 有効なIDを入力し直してください。`);
+        setNewMemberUserId(""); // Clear the input field for re-entry
       }
     } catch (err) {
       console.error("Error adding member:", err);
@@ -974,16 +975,7 @@ export default function TeamSpaceView() {
                         </div>
                       </div>
 
-                      {/* Progress line and Slider preview */}
-                      <div className="flex items-center gap-3">
-                        <div className="flex-1 h-1.5 bg-slate-150 rounded-full overflow-hidden">
-                          <div 
-                            className="h-full bg-cobalt transition-all duration-300"
-                            style={{ width: `${task.progress}%` }}
-                          />
-                        </div>
-                        <span className="text-[10px] font-black text-slate-500 shrink-0">{task.progress}%</span>
-                      </div>
+
                     </div>
                   );
                 })
@@ -1030,30 +1022,7 @@ export default function TeamSpaceView() {
                     </div>
                   )}
 
-                  {/* 2. Progress Slider (Priority removed) */}
-                  <div className="space-y-1.5 bg-white border border-slate-100 p-2.5 rounded-lg">
-                    <span className="block text-[9px] text-slate-400 font-extrabold uppercase">進捗度調整スライダー</span>
-                    <div className="flex items-center gap-2">
-                      <input 
-                        type="range" 
-                        min="0" 
-                        max="100" 
-                        step="5"
-                        value={activeTask.progress}
-                        onChange={(e) => handleTaskProgressChange(activeTask.id, Number(e.target.value))}
-                        className="w-full accent-cobalt cursor-pointer"
-                      />
-                      <input 
-                        type="number" 
-                        min="0" 
-                        max="100"
-                        value={activeTask.progress}
-                        onChange={(e) => handleTaskProgressChange(activeTask.id, Math.min(100, Math.max(0, Number(e.target.value))))}
-                        className="w-10 bg-slate-50 border border-slate-150 rounded text-center font-black text-[10px] text-slate-700 focus:outline-hidden"
-                      />
-                      <span className="text-[10px] font-bold text-slate-400">%</span>
-                    </div>
-                  </div>
+
 
                   {/* 3. Reference Links */}
                   {activeTask.links.length > 0 && (

@@ -34,22 +34,31 @@ export default function TasksView({
 }: TasksViewProps) {
   const [activeSubTab, setActiveSubTab] = useState<"list" | "priority">("list");
   const [title, setTitle] = useState("");
-  const [category, setCategory] = useState("講義");
+  const [category, setCategory] = useState("大学");
   const [priority, setPriority] = useState<PriorityType>("medium");
-  const [duration, setDuration] = useState<number | "">("");
   const [deadline, setDeadline] = useState(() => {
     const d = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
     d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
     return d.toISOString().slice(0, 16); // YYYY-MM-DDTHH:mm
   });
   
-  // Filtering and sorting state
-  const [filterCategory, setFilterCategory] = useState("all");
-  const [filterPriority, setFilterPriority] = useState("all");
-  const [filterStatus, setFilterStatus] = useState("all"); // all, completed, uncompleted
-  const [sortBy, setSortBy] = useState("deadline"); // deadline, priority, duration
+  // Custom categories list state
+  const [categories, setCategories] = useState<string[]>(() => {
+    const saved = localStorage.getItem("todone_custom_categories");
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error("Failed to parse custom categories:", e);
+      }
+    }
+    return ["大学", "サークル", "就活"];
+  });
+  const [newCatName, setNewCatName] = useState("");
+  const [showAddCatInput, setShowAddCatInput] = useState(false);
 
-  const categories = ["講義", "課題", "資格", "バイト", "サークル", "就活", "その他"];
+  // Filtering state (priority and status filters removed as requested)
+  const [filterCategory, setFilterCategory] = useState("all");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -60,14 +69,13 @@ export default function TasksView({
       title: title.trim(),
       category,
       priority,
-      duration: duration === "" ? null : Number(duration),
+      duration: null, // Time duration input is removed
       deadline,
       completed: false
     };
 
     onAddTask(newTask);
     setTitle("");
-    setDuration("");
   };
 
   const getPriorityScore = (p: PriorityType) => {
@@ -76,35 +84,18 @@ export default function TasksView({
     return 1;
   };
 
-  // Process tasks
+  // Process tasks: sorted strictly by priority score then deadline by default
   const processedTasks = tasks
     .filter((task) => {
-      const matchCat = filterCategory === "all" || task.category === filterCategory;
-      const matchPrio = filterPriority === "all" || task.priority === filterPriority;
-      const matchStatus =
-        filterStatus === "all" ||
-        (filterStatus === "completed" && task.completed) ||
-        (filterStatus === "uncompleted" && !task.completed);
-      return matchCat && matchPrio && matchStatus;
+      return filterCategory === "all" || task.category === filterCategory;
     })
     .sort((a, b) => {
-      // Uncompleted tasks on top, completed tasks at the bottom
-      if (a.completed !== b.completed) {
-        return a.completed ? 1 : -1;
+      const scoreA = getPriorityScore(a.priority);
+      const scoreB = getPriorityScore(b.priority);
+      if (scoreA !== scoreB) {
+        return scoreB - scoreA;
       }
-
-      if (sortBy === "deadline") {
-        return new Date(a.deadline).getTime() - new Date(b.deadline).getTime();
-      }
-      if (sortBy === "priority") {
-        return getPriorityScore(b.priority) - getPriorityScore(a.priority);
-      }
-      if (sortBy === "duration") {
-        const aDur = a.duration ?? 0;
-        const bDur = b.duration ?? 0;
-        return bDur - aDur;
-      }
-      return 0;
+      return new Date(a.deadline).getTime() - new Date(b.deadline).getTime();
     });
 
   const getPriorityBadgeClass = (p: string) => {
@@ -315,18 +306,60 @@ export default function TasksView({
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-bold text-slate-500 mb-1.5">カテゴリー</label>
                 <select
                   value={category}
-                  onChange={(e) => setCategory(e.target.value)}
+                  onChange={(e) => {
+                    if (e.target.value === "add_new") {
+                      setShowAddCatInput(true);
+                    } else {
+                      setCategory(e.target.value);
+                    }
+                  }}
                   className="w-full bg-slate-50 border border-slate-100 rounded-xl px-3 py-2.5 text-xs md:text-sm focus:outline-hidden focus:ring-1 focus:ring-cobalt focus:bg-white text-slate-700 transition-all"
                 >
                   {categories.map((cat) => (
                     <option key={cat} value={cat}>{cat}</option>
                   ))}
+                  <option value="add_new" className="text-cobalt font-bold">＋カテゴリーをカスタマイズ追加</option>
                 </select>
+                {showAddCatInput && (
+                  <div className="mt-2 flex gap-1.5 animate-fade-in">
+                    <input
+                      type="text"
+                      placeholder="新しいカテゴリ名"
+                      value={newCatName}
+                      onChange={(e) => setNewCatName(e.target.value)}
+                      className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs focus:outline-hidden text-slate-700"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const val = newCatName.trim();
+                        if (val && !categories.includes(val)) {
+                          const updated = [...categories, val];
+                          setCategories(updated);
+                          localStorage.setItem("todone_custom_categories", JSON.stringify(updated));
+                          setCategory(val);
+                        }
+                        setNewCatName("");
+                        setShowAddCatInput(false);
+                      }}
+                      className="bg-cobalt text-white text-xs px-2.5 py-1.5 rounded-lg font-bold hover:bg-cobalt/90 cursor-pointer"
+                    >
+                      追加
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowAddCatInput(false)}
+                      className="border border-slate-200 text-slate-500 text-xs px-2 py-1.5 rounded-lg hover:bg-slate-50 cursor-pointer"
+                    >
+                      ×
+                    </button>
+                  </div>
+                )}
               </div>
 
               <div>
@@ -343,30 +376,15 @@ export default function TasksView({
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-bold text-slate-500 mb-1.5">所要時間 (分、任意)</label>
-                <input
-                  type="number"
-                  min="5"
-                  max="480"
-                  placeholder="未設定"
-                  value={duration}
-                  onChange={(e) => setDuration(e.target.value === "" ? "" : Number(e.target.value))}
-                  className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-2.5 text-xs md:text-sm focus:outline-hidden focus:ring-1 focus:ring-cobalt focus:bg-white text-slate-700 transition-all"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-500 mb-1.5">締切日時</label>
-                <input
-                  type="datetime-local"
-                  value={deadline}
-                  onChange={(e) => setDeadline(e.target.value)}
-                  required
-                  className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-2 text-xs md:text-sm focus:outline-hidden focus:ring-1 focus:ring-cobalt focus:bg-white text-slate-700 transition-all"
-                />
-              </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-500 mb-1.5">締切日時</label>
+              <input
+                type="datetime-local"
+                value={deadline}
+                onChange={(e) => setDeadline(e.target.value)}
+                required
+                className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-2.5 text-xs md:text-sm focus:outline-hidden focus:ring-1 focus:ring-cobalt focus:bg-white text-slate-700 transition-all"
+              />
             </div>
 
             <button
@@ -397,49 +415,6 @@ export default function TasksView({
                   ))}
                 </select>
               </div>
-
-              {/* Priority Filter */}
-              <div className="flex items-center gap-1.5">
-                <ListFilter className="w-3.5 h-3.5 text-slate-400" />
-                <select
-                  value={filterPriority}
-                  onChange={(e) => setFilterPriority(e.target.value)}
-                  className="bg-slate-50 border border-slate-100 rounded-lg px-2.5 py-1.5 font-medium text-slate-600 focus:outline-hidden cursor-pointer"
-                >
-                  <option value="all">すべての優先度</option>
-                  <option value="high">High</option>
-                  <option value="medium">Medium</option>
-                  <option value="low">Low</option>
-                </select>
-              </div>
-
-              {/* Completion Status Filter */}
-              <div className="flex items-center gap-1.5">
-                <Check className="w-3.5 h-3.5 text-slate-400" />
-                <select
-                  value={filterStatus}
-                  onChange={(e) => setFilterStatus(e.target.value)}
-                  className="bg-slate-50 border border-slate-100 rounded-lg px-2.5 py-1.5 font-medium text-slate-600 focus:outline-hidden cursor-pointer"
-                >
-                  <option value="all">すべての状態</option>
-                  <option value="uncompleted">未完了タスク</option>
-                  <option value="completed">完了タスク</option>
-                </select>
-              </div>
-            </div>
-
-            {/* Sorter */}
-            <div className="flex items-center gap-1.5">
-              <span className="text-slate-400 text-xs font-semibold">並び替え:</span>
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
-                className="bg-slate-50 border border-slate-100 rounded-lg px-2.5 py-1.5 font-medium text-slate-600 focus:outline-hidden cursor-pointer"
-              >
-                <option value="deadline">締切順</option>
-                <option value="priority">優先度順</option>
-                <option value="duration">所要時間順</option>
-              </select>
             </div>
           </div>
 

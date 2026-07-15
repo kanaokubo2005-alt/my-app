@@ -43,6 +43,7 @@ export default function Dashboard({
   onLogout
 }: DashboardProps) {
   const [profileOpen, setProfileOpen] = useState(false);
+  const [activeFilter, setActiveFilter] = useState<"all" | "today" | "completed" | "deadlines">("all");
 
   // Get current greeting based on hour
   const getGreeting = () => {
@@ -65,17 +66,31 @@ export default function Dashboard({
   };
 
 
-  // Filter tasks based on search query
-  const filteredTasks = tasks.filter(task => 
-    !task.completed && (
-      task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      task.category.toLowerCase().includes(searchQuery.toLowerCase())
-    )
-  );
+  // Filter tasks based on search query and active card selection
+  const filteredTasks = tasks.filter(task => {
+    const matchesSearch = task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          task.category.toLowerCase().includes(searchQuery.toLowerCase());
+    if (!matchesSearch) return false;
+
+    if (activeFilter === "today") {
+      const d = new Date();
+      const todayStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      return task.deadline.startsWith(todayStr) || task.priority === 'high';
+    }
+    if (activeFilter === "completed") {
+      return task.completed;
+    }
+    if (activeFilter === "deadlines") {
+      if (task.completed) return false;
+      const diff = new Date(task.deadline).getTime() - new Date().getTime();
+      return diff > 0 && diff < (3 * 24 * 60 * 60 * 1000); // 3 days
+    }
+
+    return !task.completed; // default show uncompleted tasks
+  });
 
   // Stats calculation
   const todayTasksCount = tasks.filter(t => {
-    // Treat high priority or today deadline as today tasks
     const d = new Date();
     const todayStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     return t.deadline.startsWith(todayStr) || t.priority === 'high';
@@ -264,12 +279,7 @@ export default function Dashboard({
                           {task.priority.toUpperCase()}
                         </span>
 
-                        {task.duration !== null && (
-                          <span className="text-[9px] text-slate-400 font-semibold flex items-center gap-0.5">
-                            <Clock className="w-2.5 h-2.5" />
-                            {task.duration}分
-                          </span>
-                        )}
+
 
                         {/* Emergency Countdown / Urgent Badge */}
                         {!task.completed && (() => {
@@ -356,9 +366,16 @@ export default function Dashboard({
       <TaskCalendar tasks={tasks} onToggleTask={onToggleTask} />
 
       {/* 3. Stats Summary Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 pb-4">
         {/* Today's Tasks */}
-        <div className="bg-white border border-slate-100 rounded-2xl p-3 md:p-4 flex items-center gap-3 shadow-2xs hover:shadow-xs transition-shadow">
+        <div 
+          onClick={() => setActiveFilter(activeFilter === "today" ? "all" : "today")}
+          className={`border rounded-2xl p-3 md:p-4 flex items-center gap-3 shadow-2xs hover:shadow-md transition-all cursor-pointer select-none ${
+            activeFilter === "today" 
+              ? "bg-cobalt/5 border-cobalt ring-2 ring-cobalt/10" 
+              : "bg-white border-slate-100 hover:border-slate-200"
+          }`}
+        >
           <div className="w-9 h-9 rounded-xl bg-cobalt/10 text-cobalt flex items-center justify-center shrink-0">
             <Zap className="w-4.5 h-4.5" />
           </div>
@@ -369,7 +386,14 @@ export default function Dashboard({
         </div>
 
         {/* Completed */}
-        <div className="bg-white border border-slate-100 rounded-2xl p-3 md:p-4 flex items-center gap-3 shadow-2xs hover:shadow-xs transition-shadow">
+        <div 
+          onClick={() => setActiveFilter(activeFilter === "completed" ? "all" : "completed")}
+          className={`border rounded-2xl p-3 md:p-4 flex items-center gap-3 shadow-2xs hover:shadow-md transition-all cursor-pointer select-none ${
+            activeFilter === "completed" 
+              ? "bg-emerald-50/50 border-emerald-500 ring-2 ring-emerald-500/10" 
+              : "bg-white border-slate-100 hover:border-slate-200"
+          }`}
+        >
           <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
             <Award className="w-4.5 h-4.5" />
           </div>
@@ -380,7 +404,14 @@ export default function Dashboard({
         </div>
 
         {/* Upcoming Deadlines */}
-        <div className="bg-white border border-slate-100 rounded-2xl p-3 md:p-4 flex items-center gap-3 shadow-2xs hover:shadow-xs transition-shadow">
+        <div 
+          onClick={() => setActiveFilter(activeFilter === "deadlines" ? "all" : "deadlines")}
+          className={`border rounded-2xl p-3 md:p-4 flex items-center gap-3 shadow-2xs hover:shadow-md transition-all cursor-pointer select-none ${
+            activeFilter === "deadlines" 
+              ? "bg-rose-50/50 border-rose-500 ring-2 ring-rose-500/10" 
+              : "bg-white border-slate-100 hover:border-slate-200"
+          }`}
+        >
           <div className="w-9 h-9 rounded-xl bg-rose-50 text-rose-500 flex items-center justify-center shrink-0">
             <AlertCircle className="w-4.5 h-4.5" />
           </div>
@@ -390,8 +421,14 @@ export default function Dashboard({
           </div>
         </div>
 
-        {/* Focus Time */}
-        <div className="bg-white border border-slate-100 rounded-2xl p-3 md:p-4 flex items-center gap-3 shadow-2xs hover:shadow-xs transition-shadow">
+        {/* Focus Time / Clear */}
+        <div 
+          onClick={() => setActiveFilter("all")}
+          className={`bg-white border border-slate-100 hover:border-slate-200 rounded-2xl p-3 md:p-4 flex items-center gap-3 shadow-2xs hover:shadow-md transition-all cursor-pointer select-none ${
+            activeFilter !== "all" ? "ring-2 ring-amber-500/10 border-amber-300" : ""
+          }`}
+          title="クリックしてフィルターをクリア"
+        >
           <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-500 flex items-center justify-center shrink-0">
             <Flame className="w-4.5 h-4.5" />
           </div>
