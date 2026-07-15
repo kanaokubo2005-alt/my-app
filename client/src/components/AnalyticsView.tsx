@@ -67,7 +67,7 @@ export default function AnalyticsView({ tasks, onToggleTask }: AnalyticsViewProp
       </div>
 
       {/* Overview Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
         
         {/* Completion rate Circular Widget */}
         <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-xs flex flex-col items-center justify-center text-center gap-4">
@@ -100,21 +100,6 @@ export default function AnalyticsView({ tasks, onToggleTask }: AnalyticsViewProp
           <div className="text-xs text-slate-400 font-medium">
             <span className="font-bold text-slate-700">{completedTasks}</span> / {totalTasks} 件完了
           </div>
-        </div>
-
-        {/* Total Focus Hours */}
-        <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-xs flex flex-col justify-between h-full">
-          <div className="flex items-center justify-between">
-            <span className="block text-xs font-bold text-slate-400 uppercase tracking-wider">総フォーカス時間</span>
-            <span className="p-1.5 bg-amber-50 text-amber-500 rounded-lg"><Clock className="w-4 h-4" /></span>
-          </div>
-          <div className="my-4">
-            <span className="font-sans font-bold text-slate-800 text-3xl md:text-4xl">{totalFocusHours}</span>
-            <span className="text-slate-400 text-xs font-semibold ml-1">時間</span>
-          </div>
-          <p className="text-[11px] text-slate-400 font-medium leading-relaxed">
-            完了したタスクの予定所要時間から、実際に集中した総時間を算出しています。
-          </p>
         </div>
 
         {/* Active Tasks */}
@@ -238,12 +223,6 @@ export default function AnalyticsView({ tasks, onToggleTask }: AnalyticsViewProp
                           <span className={`px-1.5 py-0.5 rounded ${getPriorityBadgeClass(task.priority)}`}>
                             {task.priority.toUpperCase()}
                           </span>
-                          {task.duration !== null && (
-                            <span className="flex items-center gap-0.5">
-                              <Clock className="w-3 h-3 text-slate-300" />
-                              {task.duration}分
-                            </span>
-                          )}
                           <span className="flex items-center gap-0.5">
                             <Calendar className="w-3 h-3 text-slate-300" />
                             締切: {task.deadline}

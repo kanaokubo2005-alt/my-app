@@ -68,12 +68,7 @@ export default function PriorityView({ tasks, onToggleTask, onStartFocusSession 
               <Calendar className="w-3 h-3 text-slate-300" />
               {task.deadline}
             </span>
-            {task.duration !== null && (
-              <span className="flex items-center gap-0.5">
-                <Clock className="w-3 h-3 text-slate-300" />
-                {task.duration}分
-              </span>
-            )}
+
           </div>
 
           {!task.completed && (

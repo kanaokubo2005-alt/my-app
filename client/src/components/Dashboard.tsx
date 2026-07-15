@@ -44,6 +44,7 @@ export default function Dashboard({
 }: DashboardProps) {
   const [profileOpen, setProfileOpen] = useState(false);
   const [activeFilter, setActiveFilter] = useState<"all" | "today" | "completed" | "deadlines">("all");
+  const [showAll, setShowAll] = useState(false);
 
   // Get current greeting based on hour
   const getGreeting = () => {
@@ -86,7 +87,23 @@ export default function Dashboard({
       return diff > 0 && diff < (3 * 24 * 60 * 60 * 1000); // 3 days
     }
 
-    return !task.completed; // default show uncompleted tasks
+    return true; // default show all tasks (both completed and uncompleted) when filter is "all"
+  });
+
+  const getPriorityScore = (p: string) => {
+    if (p === 'high') return 3;
+    if (p === 'medium') return 2;
+    return 1;
+  };
+
+  // Automatically sort by priority and deadline
+  const sortedDashboardTasks = [...filteredTasks].sort((a, b) => {
+    const scoreA = getPriorityScore(a.priority);
+    const scoreB = getPriorityScore(b.priority);
+    if (scoreA !== scoreB) {
+      return scoreB - scoreA;
+    }
+    return new Date(a.deadline).getTime() - new Date(b.deadline).getTime();
   });
 
   // Stats calculation
@@ -104,10 +121,6 @@ export default function Dashboard({
     return diff > 0 && diff < (3 * 24 * 60 * 60 * 1000); // 3 days
   }).length;
 
-  const totalFocusTime = tasks
-    .filter(t => t.completed)
-    .reduce((acc, t) => acc + (t.duration ?? 0), 0);
-
   const getPriorityBadgeClass = (priority: string) => {
     switch (priority) {
       case "high":
@@ -121,12 +134,28 @@ export default function Dashboard({
     }
   };
 
+  const getListHeaderTitle = () => {
+    switch (activeFilter) {
+      case "today":
+        return "今日のタスク / 高優先度";
+      case "completed":
+        return "完了したタスク";
+      case "deadlines":
+        return "期限が近いタスク (3日以内)";
+      default:
+        return showAll ? "すべてのタスク" : "最近のタスク";
+    }
+  };
 
+  // If a filter is selected, show all matching tasks directly. Otherwise show up to 4 unless showAll is true.
+  const visibleTasks = (activeFilter !== "all" || showAll) 
+    ? sortedDashboardTasks 
+    : sortedDashboardTasks.slice(0, 4);
 
   return (
     <div className="flex-1 overflow-y-auto bg-slate-bg p-4 md:p-8 space-y-6 md:space-y-8 animate-fade-in relative">
       
-      {/* 1. Header Row (Greeting, Search Bar, Notifications, Profile) */}
+      {/* 1. Header Row (Greeting, Search Bar, Profile) */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-5">
         <div>
           <h1 className="font-sans font-bold text-2xl md:text-3xl text-slate-800 leading-tight">
@@ -183,7 +212,7 @@ export default function Dashboard({
               <div className="absolute right-0 mt-2.5 w-56 bg-white border border-slate-100 rounded-2xl shadow-xl z-50 p-4 space-y-3 text-xs">
                 <div className="border-b border-slate-50 pb-2">
                   <span className="block font-bold text-slate-800">{user?.name || "ゲスト"}</span>
-                  <span className="block text-[10px] text-slate-400 mt-0.5">ユーザーID: {user?.id || "N/A"}</span>
+                  <span className="block text-[10px] text-slate-400 mt-0.5">ユーザーID: {user?.username || user?.id || "N/A"}</span>
                 </div>
                 <div className="space-y-1">
                   <div className="flex items-center gap-2 p-2 rounded-lg hover:bg-slate-50 text-slate-600 font-medium">
@@ -210,7 +239,7 @@ export default function Dashboard({
           <div className="flex items-center gap-2">
             <h3 className="font-sans font-bold text-slate-800 text-lg flex items-center gap-2">
               <Check className="w-5 h-5 text-cobalt stroke-[2.5]" />
-              <span>タスク一覧</span>
+              <span>{getListHeaderTitle()}</span>
             </h3>
             <span className="px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-500 text-[11px] font-semibold">
               {filteredTasks.length}件
@@ -226,7 +255,7 @@ export default function Dashboard({
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {filteredTasks.length === 0 ? (
+          {visibleTasks.length === 0 ? (
             <div className="col-span-full py-10 text-center bg-slate-50/50 border border-dashed border-slate-200 rounded-2xl flex flex-col items-center justify-center gap-2">
               <ListPlus className="w-7 h-7 text-slate-300" />
               <p className="text-slate-400 text-xs font-medium">一致するタスクはありません。</p>
@@ -238,7 +267,7 @@ export default function Dashboard({
               </button>
             </div>
           ) : (
-            filteredTasks.slice(0, 4).map((task) => (
+            visibleTasks.map((task) => (
               <div 
                 key={task.id}
                 className={`rounded-xl border transition-all p-3.5 flex flex-col justify-between gap-2.5 shadow-2xs hover:shadow-xs hover:border-slate-200 group ${
@@ -279,8 +308,6 @@ export default function Dashboard({
                           {task.priority.toUpperCase()}
                         </span>
 
-
-
                         {/* Emergency Countdown / Urgent Badge */}
                         {!task.completed && (() => {
                           const deadlineDate = new Date(task.deadline);
@@ -305,7 +332,7 @@ export default function Dashboard({
                           } else if (diffDays <= 3) {
                             return (
                               <span className="bg-amber-500 text-white font-extrabold px-1.5 py-0.2 rounded text-[8px] shrink-0 flex items-center gap-0.5">
-                                <AlertCircle className="w-2 h-2" />
+                                <AlertCircle className="w-2.5 h-2.5 text-white" />
                                 <span>あと {diffDays}日</span>
                               </span>
                             );
@@ -350,13 +377,13 @@ export default function Dashboard({
           )}
         </div>
 
-        {filteredTasks.length > 4 && (
+        {activeFilter === "all" && filteredTasks.length > 4 && (
           <div className="text-center pt-1 border-t border-slate-50">
             <button 
-              onClick={onAddTaskClick}
+              onClick={() => setShowAll(!showAll)}
               className="text-[11px] font-bold text-cobalt hover:underline cursor-pointer"
             >
-              すべてのタスクを表示 ({filteredTasks.length}件中4件を表示中)
+              {showAll ? "一部のみ表示" : `すべてのタスクを表示 (${filteredTasks.length}件中4件を表示中)`}
             </button>
           </div>
         )}
@@ -369,7 +396,10 @@ export default function Dashboard({
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 pb-4">
         {/* Today's Tasks */}
         <div 
-          onClick={() => setActiveFilter(activeFilter === "today" ? "all" : "today")}
+          onClick={() => {
+            setActiveFilter(activeFilter === "today" ? "all" : "today");
+            setShowAll(true);
+          }}
           className={`border rounded-2xl p-3 md:p-4 flex items-center gap-3 shadow-2xs hover:shadow-md transition-all cursor-pointer select-none ${
             activeFilter === "today" 
               ? "bg-cobalt/5 border-cobalt ring-2 ring-cobalt/10" 
@@ -387,7 +417,10 @@ export default function Dashboard({
 
         {/* Completed */}
         <div 
-          onClick={() => setActiveFilter(activeFilter === "completed" ? "all" : "completed")}
+          onClick={() => {
+            setActiveFilter(activeFilter === "completed" ? "all" : "completed");
+            setShowAll(true);
+          }}
           className={`border rounded-2xl p-3 md:p-4 flex items-center gap-3 shadow-2xs hover:shadow-md transition-all cursor-pointer select-none ${
             activeFilter === "completed" 
               ? "bg-emerald-50/50 border-emerald-500 ring-2 ring-emerald-500/10" 
@@ -405,7 +438,10 @@ export default function Dashboard({
 
         {/* Upcoming Deadlines */}
         <div 
-          onClick={() => setActiveFilter(activeFilter === "deadlines" ? "all" : "deadlines")}
+          onClick={() => {
+            setActiveFilter(activeFilter === "deadlines" ? "all" : "deadlines");
+            setShowAll(true);
+          }}
           className={`border rounded-2xl p-3 md:p-4 flex items-center gap-3 shadow-2xs hover:shadow-md transition-all cursor-pointer select-none ${
             activeFilter === "deadlines" 
               ? "bg-rose-50/50 border-rose-500 ring-2 ring-rose-500/10" 
@@ -421,20 +457,25 @@ export default function Dashboard({
           </div>
         </div>
 
-        {/* Focus Time / Clear */}
+        {/* All Tasks */}
         <div 
-          onClick={() => setActiveFilter("all")}
-          className={`bg-white border border-slate-100 hover:border-slate-200 rounded-2xl p-3 md:p-4 flex items-center gap-3 shadow-2xs hover:shadow-md transition-all cursor-pointer select-none ${
-            activeFilter !== "all" ? "ring-2 ring-amber-500/10 border-amber-300" : ""
+          onClick={() => {
+            setActiveFilter("all");
+            setShowAll(true);
+          }}
+          className={`border rounded-2xl p-3 md:p-4 flex items-center gap-3 shadow-2xs hover:shadow-md transition-all cursor-pointer select-none ${
+            activeFilter === "all" && showAll
+              ? "bg-amber-50/50 border-amber-500 ring-2 ring-amber-500/10" 
+              : "bg-white border-slate-100 hover:border-slate-200"
           }`}
-          title="クリックしてフィルターをクリア"
+          title="すべてのタスクを表示"
         >
           <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-500 flex items-center justify-center shrink-0">
-            <Flame className="w-4.5 h-4.5" />
+            <ListPlus className="w-4.5 h-4.5" />
           </div>
           <div>
-            <span className="block text-[9px] text-slate-400 font-semibold uppercase tracking-wider">Focus Time</span>
-            <span className="font-sans font-bold text-slate-800 text-sm md:text-base">{totalFocusTime}分</span>
+            <span className="block text-[9px] text-slate-400 font-semibold uppercase tracking-wider">All Tasks</span>
+            <span className="font-sans font-bold text-slate-800 text-sm md:text-base">{tasks.length}</span>
           </div>
         </div>
       </div>

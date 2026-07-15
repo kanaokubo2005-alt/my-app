@@ -322,43 +322,6 @@ app.get("/api/teams", requireAuth, async (req: any, res) => {
       orderBy: { id: "asc" },
     });
 
-    // If no teams exist, create a default University Joint Team for this user
-    if (teams.length === 0) {
-      const user = await prisma.user.findUnique({ where: { id: req.userId } });
-      const defaultTeam = await prisma.team.create({
-        data: {
-          name: "大学合同ゼミチーム",
-          description: "ゼミ・共同研究プロジェクトのタスク・情報管理スペース",
-          members: {
-            create: [
-              { userId: req.userId, name: user?.name || "メンバー", role: "管理者 (You)", avatarColor: "bg-cobalt", activeTask: "初期計画", status: "active" },
-            ]
-          }
-        },
-        include: {
-          members: true,
-          tasks: true,
-          sharedFiles: true,
-          sharedNotes: true,
-        }
-      });
-      return res.json([
-        {
-          ...defaultTeam,
-          id: String(defaultTeam.id),
-          members: defaultTeam.members.map(m => ({ ...m, id: String(m.id), userId: m.userId ? String(m.userId) : undefined })),
-          tasks: defaultTeam.tasks.map(t => ({
-            ...t,
-            id: String(t.id),
-            recurrenceDays: t.recurrenceDays ? JSON.parse(t.recurrenceDays) : undefined,
-            attachments: t.attachments ? JSON.parse(t.attachments) : [],
-            links: t.links ? JSON.parse(t.links) : []
-          })),
-          sharedFiles: defaultTeam.sharedFiles.map(f => ({ ...f, id: String(f.id) })),
-          sharedNotes: defaultTeam.sharedNotes.map(n => ({ ...n, id: String(n.id) })),
-        }
-      ]);
-    }
 
     const formatted = teams.map((team) => ({
       ...team,
@@ -435,9 +398,18 @@ app.post("/api/teams/:teamId/members", requireAuth, async (req: any, res) => {
     const { userId, role, avatarColor, activeTask, status } = req.body;
     if (!userId || !role) return res.status(400).json({ error: "User ID and role are required" });
 
-    const targetUser = await prisma.user.findUnique({
-      where: { id: parseInt(userId, 10) }
+    let targetUser = await prisma.user.findUnique({
+      where: { username: String(userId).trim() }
     });
+
+    if (!targetUser) {
+      const parsedId = parseInt(userId, 10);
+      if (!isNaN(parsedId)) {
+        targetUser = await prisma.user.findUnique({
+          where: { id: parsedId }
+        });
+      }
+    }
 
     if (!targetUser) {
       return res.status(404).json({ error: "指定されたユーザーIDが見つかりません" });

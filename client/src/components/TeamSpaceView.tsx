@@ -273,7 +273,7 @@ export default function TeamSpaceView() {
         method: "POST",
         headers: getAuthHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify({
-          userId: parseInt(newMemberUserId.trim(), 10),
+          userId: newMemberUserId.trim(),
           role: newMemberRole.trim(),
           avatarColor: randomColor,
           activeTask: newMemberTask.trim() || "未アサインのタスク",
