@@ -11,7 +11,6 @@ import {
 import Sidebar from "./components/Sidebar";
 import Dashboard from "./components/Dashboard";
 import TasksView from "./components/TasksView";
-import AnalyticsView from "./components/AnalyticsView";
 import SettingsView from "./components/SettingsView";
 import TeamSpaceView from "./components/TeamSpaceView";
 import FocusSession from "./components/FocusSession";
