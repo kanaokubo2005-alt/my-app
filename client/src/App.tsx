@@ -263,6 +263,7 @@ export default function App() {
             setSearchQuery={setSearchQuery}
             user={user}
             onLogout={handleLogout}
+            onNavigateToSettings={() => setCurrentTab("settings")}
           />
         );
       case "tasks":
@@ -277,12 +278,9 @@ export default function App() {
         );
       case "team":
         return <TeamSpaceView />;
-      case "analytics":
-        return <AnalyticsView tasks={tasks} onToggleTask={handleToggleTask} />;
       case "settings":
         return (
           <SettingsView
-            onResetTasks={handleResetTasks}
             user={user}
             onLogout={handleLogout}
             theme={theme}

@@ -29,6 +29,7 @@ interface DashboardProps {
   setSearchQuery: (query: string) => void;
   user: any;
   onLogout: () => void;
+  onNavigateToSettings?: () => void;
 }
 
 export default function Dashboard({
@@ -40,7 +41,8 @@ export default function Dashboard({
   searchQuery,
   setSearchQuery,
   user,
-  onLogout
+  onLogout,
+  onNavigateToSettings
 }: DashboardProps) {
   const [profileOpen, setProfileOpen] = useState(false);
   const [activeFilter, setActiveFilter] = useState<"all" | "today" | "completed" | "deadlines">("all");
@@ -215,8 +217,14 @@ export default function Dashboard({
                   <span className="block text-[10px] text-slate-400 mt-0.5">ユーザーID: {user?.username || user?.id || "N/A"}</span>
                 </div>
                 <div className="space-y-1">
-                  <div className="flex items-center gap-2 p-2 rounded-lg hover:bg-slate-50 text-slate-600 font-medium">
-                    <UserIcon className="w-4 h-4" />
+                  <div 
+                    onClick={() => {
+                      setProfileOpen(false);
+                      if (onNavigateToSettings) onNavigateToSettings();
+                    }}
+                    className="flex items-center gap-2 p-2 rounded-lg hover:bg-slate-50 text-slate-600 font-medium cursor-pointer transition-colors"
+                  >
+                    <UserIcon className="w-4 h-4 text-cobalt" />
                     <span>マイアカウント</span>
                   </div>
                 </div>
@@ -348,7 +356,11 @@ export default function Dashboard({
                     <button
                       onClick={() => onDeleteTask(task.id)}
                       title="タスクを削除"
-                      className="p-1 text-slate-400 hover:text-rose-500 hover:bg-slate-50 rounded-lg transition-all opacity-0 group-hover:opacity-100 cursor-pointer"
+                      className={`p-1 text-slate-400 hover:text-rose-500 hover:bg-slate-50 rounded-lg transition-all cursor-pointer ${
+                        task.completed 
+                          ? "opacity-85" 
+                          : "opacity-0 group-hover:opacity-100"
+                      }`}
                     >
                       <Trash2 className="w-3 h-3" />
                     </button>

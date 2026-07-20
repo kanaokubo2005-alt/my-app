@@ -13,7 +13,9 @@ import {
   ArrowRightCircle,
   ArrowDownCircle,
   Flame,
-  Play
+  Play,
+  CheckCircle2,
+  X
 } from "lucide-react";
 import type { Task, PriorityType } from "../types";
 
@@ -32,6 +34,7 @@ export default function TasksView({
   onDeleteTask,
   onStartFocusSession
 }: TasksViewProps) {
+  const [showCompletedModal, setShowCompletedModal] = useState(false);
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState("大学");
   const [priority, setPriority] = useState<PriorityType>("medium");
@@ -116,6 +119,15 @@ export default function TasksView({
             日々のすべての予定をここで一元管理・新規登録できます
           </p>
         </div>
+
+        {/* Button to show completed tasks modal */}
+        <button
+          onClick={() => setShowCompletedModal(true)}
+          className="flex items-center gap-1.5 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 font-bold px-3.5 py-2 rounded-xl text-xs transition-all shadow-2xs cursor-pointer shrink-0"
+        >
+          <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+          <span>完了したタスクを表示 ({tasks.filter(t => t.completed).length}件)</span>
+        </button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
@@ -332,6 +344,99 @@ export default function TasksView({
           </div>
         </div>
       </div>
+
+      {/* Completed Tasks Modal */}
+      {showCompletedModal && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl border border-slate-100 w-full max-w-2xl flex flex-col max-h-[85vh] animate-fade-in">
+            {/* Modal Header */}
+            <div className="p-5 border-b border-slate-100 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="p-2 bg-emerald-50 rounded-xl text-emerald-500">
+                  <CheckCircle2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-sans font-bold text-slate-800 text-base">完了したタスク一覧</h3>
+                  <p className="text-slate-400 text-[11px] font-medium">これまでに達成された学習の成果です</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setShowCompletedModal(false)}
+                className="p-2 hover:bg-slate-50 rounded-xl text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 overflow-y-auto space-y-4 flex-1">
+              {tasks.filter(t => t.completed).length === 0 ? (
+                <div className="text-center py-16 space-y-2">
+                  <AlertCircle className="w-8 h-8 text-slate-300 mx-auto" />
+                  <p className="text-sm font-bold text-slate-500">完了したタスクはまだありません</p>
+                  <p className="text-xs text-slate-400">タスクに取り組み完了させると、ここに成果が蓄積されます！</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {tasks.filter(t => t.completed).map((task) => (
+                    <div 
+                      key={task.id}
+                      className="p-4 bg-slate-50/50 border border-slate-100 rounded-xl flex items-center justify-between gap-4 hover:border-slate-200 transition-all"
+                    >
+                      <div className="min-w-0 space-y-1">
+                        <span className="font-semibold text-xs md:text-sm text-slate-700 block truncate line-through opacity-70">
+                          {task.title}
+                        </span>
+                        <div className="flex flex-wrap items-center gap-2 text-[10px] text-slate-400 font-medium">
+                          <span className="bg-slate-100 px-1.5 py-0.5 rounded text-slate-500">
+                            {task.category}
+                          </span>
+                          <span className={`px-1.5 py-0.5 rounded ${getPriorityBadgeClass(task.priority)}`}>
+                            {task.priority.toUpperCase()}
+                          </span>
+                          <span className="flex items-center gap-0.5">
+                            <Calendar className="w-3 h-3 text-slate-300" />
+                            締切: {task.deadline}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Action buttons */}
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          onClick={() => onToggleTask(task.id)}
+                          className="flex items-center gap-1 bg-white hover:bg-slate-100 border border-slate-200 text-slate-600 font-bold px-2.5 py-1.5 rounded-lg text-[10px] transition-all cursor-pointer shadow-3xs"
+                          title="タスクを未完了に戻す"
+                        >
+                          <RotateCcw className="w-3 h-3 text-cobalt" />
+                          <span>未完了に戻す</span>
+                        </button>
+                        <button
+                          onClick={() => onDeleteTask(task.id)}
+                          className="p-1.5 text-slate-400 hover:text-rose-500 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+                          title="タスクを削除"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 border-t border-slate-100 bg-slate-50/50 rounded-b-2xl flex justify-end">
+              <button 
+                onClick={() => setShowCompletedModal(false)}
+                className="bg-slate-800 hover:bg-slate-900 text-white font-bold px-4 py-2 rounded-xl text-xs cursor-pointer transition-colors"
+              >
+                閉じる
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
