@@ -11,7 +11,6 @@ import {
 import Sidebar from "./components/Sidebar";
 import Dashboard from "./components/Dashboard";
 import TasksView from "./components/TasksView";
-import SettingsView from "./components/SettingsView";
 import TeamSpaceView from "./components/TeamSpaceView";
 import FocusSession from "./components/FocusSession";
 import type { Task } from "./types";
@@ -262,7 +261,6 @@ export default function App() {
             setSearchQuery={setSearchQuery}
             user={user}
             onLogout={handleLogout}
-            onNavigateToSettings={() => setCurrentTab("settings")}
           />
         );
       case "tasks":
@@ -277,15 +275,6 @@ export default function App() {
         );
       case "team":
         return <TeamSpaceView />;
-      case "settings":
-        return (
-          <SettingsView
-            user={user}
-            onLogout={handleLogout}
-            theme={theme}
-            setTheme={setTheme}
-          />
-        );
       default:
         return <div>Tab not found</div>;
     }

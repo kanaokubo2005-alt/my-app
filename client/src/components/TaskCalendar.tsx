@@ -71,11 +71,8 @@ export default function TaskCalendar({ tasks, onToggleTask }: TaskCalendarProps)
       case "must":
         return "bg-rose-500 text-white font-semibold";
       case "medium":
-        return "bg-amber-400 text-slate-800 font-semibold";
-      case "low":
-        return "bg-emerald-500 text-white font-semibold";
       default:
-        return "bg-cobalt text-white font-semibold";
+        return "bg-amber-400 text-slate-900 font-semibold";
     }
   };
 

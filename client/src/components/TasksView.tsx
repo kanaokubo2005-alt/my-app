@@ -102,10 +102,9 @@ export default function TasksView({
 
   const getPriorityBadgeClass = (p: string) => {
     switch (p) {
-      case "high": return "bg-rose-50 border border-rose-100 text-rose-600";
-      case "medium": return "bg-amber-50 border border-amber-100 text-amber-600";
-      case "low": return "bg-emerald-50 border border-emerald-100 text-emerald-600";
-      default: return "bg-slate-50 border border-slate-100 text-slate-600";
+      case "high": return "bg-rose-50 border border-rose-100 text-rose-600 font-extrabold";
+      case "medium":
+      default: return "bg-amber-50 border border-amber-100 text-amber-600 font-bold";
     }
   };
 
@@ -153,7 +152,18 @@ export default function TasksView({
 
              <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-bold text-slate-500 mb-1.5">カテゴリー</label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-xs font-bold text-slate-500">カテゴリー</label>
+                  {!showAddCatInput && (
+                    <button
+                      type="button"
+                      onClick={() => setShowAddCatInput(true)}
+                      className="text-[10px] text-cobalt font-bold hover:underline cursor-pointer"
+                    >
+                      ＋追加
+                    </button>
+                  )}
+                </div>
                 <select
                   value={category}
                   onChange={(e) => {
@@ -176,30 +186,46 @@ export default function TasksView({
                       type="text"
                       placeholder="新しいカテゴリ名"
                       value={newCatName}
+                      autoFocus
                       onChange={(e) => setNewCatName(e.target.value)}
-                      className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs focus:outline-hidden text-slate-700"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          const val = newCatName.trim();
+                          if (val) {
+                            const updated = categories.includes(val) ? categories : [...categories, val];
+                            setCategories(updated);
+                            localStorage.setItem("todone_custom_categories", JSON.stringify(updated));
+                            setCategory(val);
+                            setNewCatName("");
+                            setShowAddCatInput(false);
+                          }
+                        }
+                      }}
+                      className="flex-1 bg-white border border-cobalt/40 rounded-lg px-2.5 py-1.5 text-xs focus:outline-hidden text-slate-700 shadow-xs"
                     />
                     <button
                       type="button"
                       onClick={() => {
                         const val = newCatName.trim();
-                        if (val && !categories.includes(val)) {
-                          const updated = [...categories, val];
+                        if (val) {
+                          const updated = categories.includes(val) ? categories : [...categories, val];
                           setCategories(updated);
                           localStorage.setItem("todone_custom_categories", JSON.stringify(updated));
                           setCategory(val);
+                          setNewCatName("");
+                          setShowAddCatInput(false);
                         }
-                        setNewCatName("");
-                        setShowAddCatInput(false);
                       }}
-                      className="bg-cobalt text-white text-xs px-2.5 py-1.5 rounded-lg font-bold hover:bg-cobalt/90 cursor-pointer"
+                      className="bg-cobalt text-white text-xs px-3 py-1.5 rounded-lg font-bold hover:bg-cobalt/90 cursor-pointer shrink-0"
                     >
                       追加
                     </button>
                     <button
                       type="button"
                       onClick={() => setShowAddCatInput(false)}
-                      className="border border-slate-200 text-slate-500 text-xs px-2 py-1.5 rounded-lg hover:bg-slate-50 cursor-pointer"
+                      className="border border-slate-200 text-slate-500 text-xs px-2.5 py-1.5 rounded-lg hover:bg-slate-50 cursor-pointer shrink-0"
                     >
                       ×
                     </button>
@@ -214,9 +240,8 @@ export default function TasksView({
                   onChange={(e) => setPriority(e.target.value as PriorityType)}
                   className="w-full bg-slate-50 border border-slate-100 rounded-xl px-3 py-2.5 text-xs md:text-sm focus:outline-hidden focus:ring-1 focus:ring-cobalt focus:bg-white text-slate-700 transition-all"
                 >
-                  <option value="high">High (赤)</option>
-                  <option value="medium">Medium (オレンジ)</option>
-                  <option value="low">Low (緑)</option>
+                  <option value="high">最重要 (赤)</option>
+                  <option value="medium">重要 (オレンジ)</option>
                 </select>
               </div>
             </div>
@@ -310,16 +335,9 @@ export default function TasksView({
                         <span className="bg-slate-200/60 px-1.5 py-0.5 rounded-md text-slate-500">
                           {task.category}
                         </span>
-                        {task.priority !== "high" && (
-                          <span className={`px-1.5 py-0.5 rounded-md ${getPriorityBadgeClass(task.priority)}`}>
-                            {task.priority.toUpperCase()}
-                          </span>
-                        )}
-                        {task.priority === "high" && (
-                          <span className="bg-rose-600/10 text-rose-600 px-1.5 py-0.5 rounded-md font-bold">
-                            重要
-                          </span>
-                        )}
+                        <span className={`px-1.5 py-0.5 rounded-md text-[10px] ${getPriorityBadgeClass(task.priority)}`}>
+                          {task.priority === "high" ? "最重要" : "重要"}
+                        </span>
                         <span className="flex items-center gap-0.5">
                           <Calendar className="w-3 h-3 text-slate-300" />
                           締切: {task.deadline.replace("T", " ")}
@@ -391,8 +409,8 @@ export default function TasksView({
                           <span className="bg-slate-100 px-1.5 py-0.5 rounded text-slate-500">
                             {task.category}
                           </span>
-                          <span className={`px-1.5 py-0.5 rounded ${getPriorityBadgeClass(task.priority)}`}>
-                            {task.priority.toUpperCase()}
+                          <span className={`px-1.5 py-0.5 rounded text-[10px] ${getPriorityBadgeClass(task.priority)}`}>
+                            {task.priority === "high" ? "最重要" : "重要"}
                           </span>
                           <span className="flex items-center gap-0.5">
                             <Calendar className="w-3 h-3 text-slate-300" />

@@ -171,12 +171,10 @@ const getDynamicPriority = (deadlineStr: string, originalPriority: string): stri
 
     if (diffDays <= 1) {
       return "high";
-    } else if (diffDays <= 3) {
-      return originalPriority === "high" ? "high" : "medium";
     }
-    return originalPriority;
+    return originalPriority === "high" ? "high" : "medium";
   } catch {
-    return originalPriority;
+    return originalPriority === "high" ? "high" : "medium";
   }
 };
 

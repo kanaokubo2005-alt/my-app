@@ -29,7 +29,6 @@ interface DashboardProps {
   setSearchQuery: (query: string) => void;
   user: any;
   onLogout: () => void;
-  onNavigateToSettings?: () => void;
 }
 
 export default function Dashboard({
@@ -41,8 +40,7 @@ export default function Dashboard({
   searchQuery,
   setSearchQuery,
   user,
-  onLogout,
-  onNavigateToSettings
+  onLogout
 }: DashboardProps) {
   const [profileOpen, setProfileOpen] = useState(false);
   const [activeFilter, setActiveFilter] = useState<"all" | "today" | "completed" | "deadlines">("all");
@@ -128,11 +126,8 @@ export default function Dashboard({
       case "high":
         return "bg-rose-50 border border-rose-100 text-rose-500 font-bold";
       case "medium":
-        return "bg-amber-50 border border-amber-100 text-amber-500 font-bold";
-      case "low":
-        return "bg-emerald-50 border border-emerald-100 text-emerald-500 font-bold";
       default:
-        return "bg-slate-50 border border-slate-100 text-slate-500 font-semibold";
+        return "bg-amber-50 border border-amber-100 text-amber-500 font-bold";
     }
   };
 
@@ -215,18 +210,6 @@ export default function Dashboard({
                 <div className="border-b border-slate-50 pb-2">
                   <span className="block font-bold text-slate-800">{user?.name || "ゲスト"}</span>
                   <span className="block text-[10px] text-slate-400 mt-0.5">ユーザーID: {user?.username || user?.id || "N/A"}</span>
-                </div>
-                <div className="space-y-1">
-                  <div 
-                    onClick={() => {
-                      setProfileOpen(false);
-                      if (onNavigateToSettings) onNavigateToSettings();
-                    }}
-                    className="flex items-center gap-2 p-2 rounded-lg hover:bg-slate-50 text-slate-600 font-medium cursor-pointer transition-colors"
-                  >
-                    <UserIcon className="w-4 h-4 text-cobalt" />
-                    <span>マイアカウント</span>
-                  </div>
                 </div>
                 <button
                   onClick={onLogout}
@@ -312,8 +295,8 @@ export default function Dashboard({
                           {task.category}
                         </span>
                         
-                        <span className={`text-[9px] font-extrabold px-1.5 py-0.2 rounded uppercase ${getPriorityBadgeClass(task.priority)}`}>
-                          {task.priority.toUpperCase()}
+                        <span className={`text-[9px] font-extrabold px-1.5 py-0.2 rounded ${getPriorityBadgeClass(task.priority)}`}>
+                          {task.priority === "high" ? "最重要" : "重要"}
                         </span>
 
                         {/* Emergency Countdown / Urgent Badge */}

@@ -39,7 +39,6 @@ export default function Sidebar({
     { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
     { id: "tasks", label: "Tasks", icon: CheckSquare },
     { id: "team", label: "Team Space", icon: Users },
-    { id: "settings", label: "Settings", icon: SettingsIcon },
   ];
 
   return (
@@ -106,22 +105,15 @@ export default function Sidebar({
           </nav>
         </div>
 
-        {/* User Profile & Footer - Clicking opens Account Settings */}
-        <div 
-          onClick={() => {
-            setCurrentTab("settings");
-            setIsOpen(false);
-          }}
-          className="pt-4 border-t border-slate-100 flex items-center justify-between cursor-pointer hover:bg-slate-50 p-2 rounded-xl transition-colors group"
-          title="アカウント設定を開く"
-        >
+        {/* User Profile & Footer */}
+        <div className="pt-4 border-t border-slate-100 flex items-center justify-between p-2 rounded-xl">
           <div className="flex items-center gap-3">
-            <div className="relative w-10 h-10 rounded-full bg-cobalt-light/10 text-cobalt border border-cobalt-light/20 flex items-center justify-center font-bold text-sm group-hover:border-cobalt/30 transition-colors">
+            <div className="relative w-10 h-10 rounded-full bg-cobalt-light/10 text-cobalt border border-cobalt-light/20 flex items-center justify-center font-bold text-sm">
               {initials}
               <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 border-2 border-white rounded-full"></div>
             </div>
             <div className="min-w-0">
-              <span className="font-sans font-semibold text-sm text-slate-800 block truncate max-w-[120px] group-hover:text-cobalt transition-colors">{displayName}</span>
+              <span className="font-sans font-semibold text-sm text-slate-800 block truncate max-w-[120px]">{displayName}</span>
               <span className="text-xs text-slate-400 block truncate max-w-[120px]">{userEmail}</span>
             </div>
           </div>
