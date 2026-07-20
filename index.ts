@@ -389,6 +389,33 @@ app.post("/api/teams", requireAuth, async (req: any, res) => {
   }
 });
 
+// 2.5 Delete a team (workspace)
+app.delete("/api/teams/:id", requireAuth, async (req: any, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (isNaN(id)) {
+      return res.status(400).json({ error: "Invalid team ID" });
+    }
+
+    const member = await prisma.teamMember.findFirst({
+      where: { teamId: id, userId: req.userId }
+    });
+
+    if (!member) {
+      return res.status(403).json({ error: "このワークスペースを削除する権限がありません" });
+    }
+
+    await prisma.team.delete({
+      where: { id }
+    });
+
+    res.status(204).send();
+  } catch (error) {
+    console.error("Error deleting team:", error);
+    res.status(500).json({ error: "Failed to delete team" });
+  }
+});
+
 // 3. Add member to team
 app.post("/api/teams/:teamId/members", requireAuth, async (req: any, res) => {
   try {
@@ -443,13 +470,14 @@ app.post("/api/teams/:teamId/members", requireAuth, async (req: any, res) => {
   }
 });
 
-// 4. Add task to team (supports files and notes if specified)
+// 4. Add task to team (supports files, folders, and notes if specified)
 app.post("/api/teams/:teamId/tasks", async (req, res) => {
   try {
     const teamId = parseInt(req.params.teamId, 10);
     const { 
       title, 
       assignedTo, 
+      folderName,
       description, 
       recurrence, 
       recurrenceDays, 
@@ -467,6 +495,7 @@ app.post("/api/teams/:teamId/tasks", async (req, res) => {
         teamId,
         title,
         assignedTo: assignedTo || "未設定",
+        folderName: folderName || null,
         description: description || "",
         recurrence: recurrence || "none",
         recurrenceDays: recurrenceDays ? JSON.stringify(recurrenceDays) : null,

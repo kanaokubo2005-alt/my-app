@@ -62,6 +62,7 @@ model TeamTask {
   team        Team    @relation(fields: [teamId], references: [id], onDelete: Cascade)
   title       String
   assignedTo  String
+  folderName  String?
   progress    Int     @default(0)
   description String
   recurrence  String  // "none" | "daily" | "biweekly" | "weekly-days" | "yearly"
