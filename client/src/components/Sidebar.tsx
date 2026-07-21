@@ -113,7 +113,10 @@ export default function Sidebar({
                     isActive ? item.activeTabClass : item.inactiveTabClass
                   }`}
                 >
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2.5">
+                    <span className="font-brand-serif font-black text-xs tracking-wider opacity-80 bg-black/10 px-1.5 py-0.5 rounded">
+                      NO. {item.no}
+                    </span>
                     <span className="font-sans font-bold text-sm tracking-wide text-current">{item.label}</span>
                   </div>
                 </button>

@@ -1332,28 +1332,28 @@ export default function TeamSpaceView({ onAddToTrash }: TeamSpaceViewProps) {
       {/* MODAL: TASK DETAILS & EDITING DIALOG */}
       {selectedTaskModal && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl border border-slate-100 p-6 w-full max-w-lg shadow-xl space-y-5 animate-fade-in text-xs md:text-sm">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div className="bg-[#FAF8F5] bg-notebook-pattern rounded-lg border border-[#E0DACB] p-6 w-full max-w-lg shadow-xl space-y-4 animate-fade-in text-xs md:text-sm text-[#22303C]">
+            <div className="flex items-center justify-between border-b border-[#E0DACB] pb-3">
               <div className="flex items-center gap-2">
-                <Info className="w-5 h-5 text-cobalt" />
-                <h3 className="font-sans font-bold text-slate-800 text-base">タスクの詳細と変更</h3>
+                <Info className="w-5 h-5 text-[#345B73]" />
+                <h3 className="font-sans font-bold text-[#244053] text-base">共有タスクの詳細情報</h3>
               </div>
-              <button onClick={() => setSelectedTaskModal(null)} className="text-slate-400 hover:text-slate-600 font-bold">✕</button>
+              <button onClick={() => setSelectedTaskModal(null)} className="text-slate-400 hover:text-slate-600 font-bold cursor-pointer">✕</button>
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-3.5">
               <div>
-                <label className="block text-slate-400 font-bold text-[10px] uppercase mb-1">タスク名</label>
-                <span className="font-extrabold text-base text-slate-800 block">{selectedTaskModal.title}</span>
+                <label className="block text-[#61727F] font-bold text-[10px] uppercase mb-1">タスク名</label>
+                <span className="font-sans font-extrabold text-base text-[#22303C] block">{selectedTaskModal.title}</span>
               </div>
 
-              <div className="grid grid-cols-2 gap-4 bg-slate-50 p-3.5 rounded-xl border border-slate-150">
+              <div className="grid grid-cols-2 gap-3 bg-[#FAF8F5] bg-notebook-pattern p-3 rounded-lg border border-[#E0DACB]">
                 <div>
-                  <label className="block text-slate-500 font-bold mb-1 text-xs">👤 担当メンバーの変更</label>
+                  <label className="block text-[#4A5D6B] font-bold mb-1 text-xs">👤 担当メンバーの変更</label>
                   <select
                     value={selectedTaskModal.assignedTo}
                     onChange={(e) => updateTaskAssignee(selectedTaskModal.id, e.target.value)}
-                    className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 font-bold text-slate-700 text-xs cursor-pointer"
+                    className="w-full bg-white border border-[#E0DACB] rounded-md px-2.5 py-1.5 font-bold text-[#22303C] text-xs cursor-pointer"
                   >
                     <option value="大久保 佳奈">大久保 佳奈 (You)</option>
                     {teamMembers.filter(m => m.name !== "大久保 佳奈").map(m => (
@@ -1363,11 +1363,11 @@ export default function TeamSpaceView({ onAddToTrash }: TeamSpaceViewProps) {
                 </div>
 
                 <div>
-                  <label className="block text-slate-500 font-bold mb-1 text-xs">📁 収納フォルダの変更</label>
+                  <label className="block text-[#4A5D6B] font-bold mb-1 text-xs">📁 収納フォルダの変更</label>
                   <select
                     value={selectedTaskModal.folderName || ""}
                     onChange={(e) => moveTaskToFolder(selectedTaskModal.id, e.target.value || null)}
-                    className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 font-bold text-slate-700 text-xs cursor-pointer"
+                    className="w-full bg-white border border-[#E0DACB] rounded-md px-2.5 py-1.5 font-bold text-[#22303C] text-xs cursor-pointer"
                   >
                     <option value="">未分類タスク</option>
                     {activeFolders.map(f => (
@@ -1377,28 +1377,67 @@ export default function TeamSpaceView({ onAddToTrash }: TeamSpaceViewProps) {
                 </div>
               </div>
 
+              {/* Description / Comments */}
               {selectedTaskModal.description && (
                 <div>
-                  <label className="block text-slate-400 font-bold text-[10px] uppercase mb-1">メモ・詳細説明</label>
-                  <p className="p-3 bg-slate-50 border border-slate-150 rounded-xl text-slate-700 text-xs leading-relaxed font-medium">
+                  <label className="block text-[#61727F] font-bold text-[10px] uppercase mb-1">💬 メモ・コメント</label>
+                  <p className="p-3 bg-white/90 border border-[#E0DACB] rounded-md text-[#22303C] text-xs leading-relaxed font-medium">
                     {selectedTaskModal.description}
                   </p>
                 </div>
               )}
+
+              {/* Attached Files */}
+              {selectedTaskModal.attachments && selectedTaskModal.attachments.length > 0 && (
+                <div>
+                  <label className="block text-[#61727F] font-bold text-[10px] uppercase mb-1">📎 添付ファイル</label>
+                  <div className="space-y-1.5">
+                    {selectedTaskModal.attachments.map((file, i) => (
+                      <div key={i} className="flex items-center gap-2 p-2 bg-white/90 border border-[#E0DACB] rounded-md text-xs">
+                        <Paperclip className="w-3.5 h-3.5 text-[#345B73]" />
+                        <span className="font-bold text-[#22303C] flex-1 truncate">{file.name}</span>
+                        {file.url && (
+                          <a href={file.url} target="_blank" rel="noopener noreferrer" className="text-[#345B73] hover:underline font-bold text-[10px]">
+                            開く ↗
+                          </a>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Attached Web Links */}
+              {selectedTaskModal.links && selectedTaskModal.links.length > 0 && (
+                <div>
+                  <label className="block text-[#61727F] font-bold text-[10px] uppercase mb-1">🔗 関連Webリンク</label>
+                  <div className="space-y-1.5">
+                    {selectedTaskModal.links.map((link, i) => (
+                      <div key={i} className="flex items-center gap-2 p-2 bg-white/90 border border-[#E0DACB] rounded-md text-xs">
+                        <LinkIcon className="w-3.5 h-3.5 text-[#345B73]" />
+                        <a href={link.url} target="_blank" rel="noopener noreferrer" className="font-bold text-[#345B73] hover:underline flex-1 truncate">
+                          {link.label || link.url} ↗
+                        </a>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
-            <div className="flex justify-between items-center pt-3 border-t border-slate-100">
+            <div className="flex justify-between items-center pt-3 border-t border-[#E0DACB]">
               <button
                 onClick={(e) => {
                   handleDeleteTask(selectedTaskModal.id, e);
+                  setSelectedTaskModal(null);
                 }}
-                className="text-rose-500 hover:bg-rose-50 border border-rose-100 px-3 py-1.5 rounded-xl font-bold text-xs cursor-pointer"
+                className="text-[#C24D38] hover:bg-rose-50 border border-[#C24D38]/30 px-3 py-1.5 rounded-md font-bold text-xs cursor-pointer"
               >
                 タスクを削除
               </button>
               <button 
                 onClick={() => setSelectedTaskModal(null)}
-                className="bg-slate-800 hover:bg-slate-900 text-white font-bold px-5 py-2 rounded-xl text-xs cursor-pointer"
+                className="bg-[#244053] hover:bg-[#1A3141] text-white font-bold px-5 py-2 rounded-md text-xs cursor-pointer shadow-xs"
               >
                 閉じる
               </button>

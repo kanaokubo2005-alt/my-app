@@ -7,6 +7,35 @@ interface TaskCalendarProps {
   onToggleTask?: (id: string) => void;
 }
 
+// Japanese Public Holidays dictionary
+const getJapaneseHoliday = (monthNum: number, dayNum: number): string | null => {
+  const mm = String(monthNum).padStart(2, "0");
+  const dd = String(dayNum).padStart(2, "0");
+  const key = `${mm}-${dd}`;
+
+  const holidays: Record<string, string> = {
+    "01-01": "元日",
+    "01-12": "成人の日",
+    "02-11": "建国記念の日",
+    "02-23": "天皇誕生日",
+    "03-20": "春分の日",
+    "04-29": "昭和の日",
+    "05-03": "憲法記念日",
+    "05-04": "みどりの日",
+    "05-05": "こどもの日",
+    "07-20": "海の日",
+    "08-11": "山の日",
+    "09-21": "敬老の日",
+    "09-23": "秋分の日",
+    "10-12": "スポーツの日",
+    "11-03": "文化の日",
+    "11-23": "勤労感謝の日",
+    "12-31": "大晦日"
+  };
+
+  return holidays[key] || null;
+};
+
 export default function TaskCalendar({ tasks, onToggleTask }: TaskCalendarProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
 
@@ -46,10 +75,7 @@ export default function TaskCalendar({ tasks, onToggleTask }: TaskCalendarProps)
   const getTasksForDate = (dayNum: number, isCurrentMonth: boolean) => {
     if (!isCurrentMonth) return [];
     const dateStr = getLocalDateString(dayNum, true);
-    return tasks.filter(task => {
-      // Handles both "YYYY-MM-DD" and full ISO strings
-      return task.deadline.startsWith(dateStr);
-    });
+    return tasks.filter(task => task.deadline.startsWith(dateStr));
   };
 
   const isToday = (dayNum: number, isCurrentMonth: boolean) => {
@@ -63,23 +89,19 @@ export default function TaskCalendar({ tasks, onToggleTask }: TaskCalendarProps)
   };
 
   const getPriorityBgColor = (priority: string, completed: boolean) => {
-    if (completed) {
-      return "bg-slate-100 text-slate-400 line-through opacity-70";
-    }
+    if (completed) return "bg-slate-200 text-slate-500 line-through";
     switch (priority) {
-      case "high":
-      case "must":
-        return "bg-rose-500 text-white font-semibold";
-      case "medium":
-      default:
-        return "bg-amber-400 text-slate-900 font-semibold";
+      case "high": return "bg-[#C24D38] text-white font-bold";
+      case "medium": return "bg-[#C49A45] text-white font-bold";
+      case "low":
+      default: return "bg-[#345B73] text-white font-semibold";
     }
   };
 
-  // Generate calendar grid array
+  // Generate grid cells
   const calendarCells = [];
 
-  // 1. Prev month padding days
+  // 1. Previous month trailing days
   for (let i = firstDayIndex - 1; i >= 0; i--) {
     calendarCells.push({
       dayNum: prevDaysInMonth - i,
@@ -95,8 +117,8 @@ export default function TaskCalendar({ tasks, onToggleTask }: TaskCalendarProps)
     });
   }
 
-  // 3. Next month padding days to complete grid (multiples of 7)
-  const remainingCells = 7 - (calendarCells.length % 7);
+  // 3. Next month leading days (fill remaining to reach a multiple of 7)
+  const remainingCells = 42 - calendarCells.length;
   if (remainingCells < 7) {
     for (let i = 1; i <= remainingCells; i++) {
       calendarCells.push({
@@ -107,24 +129,24 @@ export default function TaskCalendar({ tasks, onToggleTask }: TaskCalendarProps)
   }
 
   return (
-    <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-xs space-y-4">
+    <div className="bg-[#FAF8F5] bg-notebook-pattern border border-[#E0DACB] rounded-lg p-4 md:p-5 shadow-xs space-y-4">
       {/* Calendar Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between border-b border-[#E0DACB] pb-3">
         <div className="flex items-center gap-2">
-          <span className="text-sm md:text-base font-sans font-extrabold text-slate-800">
+          <span className="text-base md:text-lg font-sans font-black text-[#244053]">
             {year}年 {monthNames[month]}
           </span>
         </div>
         <div className="flex items-center gap-1.5">
           <button
             onClick={handlePrevMonth}
-            className="p-1.5 rounded-lg border border-slate-100 hover:bg-slate-50 transition-colors text-slate-500 cursor-pointer"
+            className="p-1.5 rounded-md border border-[#E0DACB] bg-[#F4F1EA] hover:bg-[#EBE7DF] transition-colors text-[#22303C] cursor-pointer"
           >
             <ChevronLeft className="w-4 h-4" />
           </button>
           <button
             onClick={handleNextMonth}
-            className="p-1.5 rounded-lg border border-slate-100 hover:bg-slate-50 transition-colors text-slate-500 cursor-pointer"
+            className="p-1.5 rounded-md border border-[#E0DACB] bg-[#F4F1EA] hover:bg-[#EBE7DF] transition-colors text-[#22303C] cursor-pointer"
           >
             <ChevronRight className="w-4 h-4" />
           </button>
@@ -132,14 +154,14 @@ export default function TaskCalendar({ tasks, onToggleTask }: TaskCalendarProps)
       </div>
 
       {/* Weekday Labels */}
-      <div className="grid grid-cols-7 gap-1 text-center text-[10px] md:text-xs font-bold text-slate-400">
-        <div className="text-rose-500 py-1">日</div>
+      <div className="grid grid-cols-7 gap-1 text-center text-[10px] md:text-xs font-bold text-[#61727F]">
+        <div className="text-[#C24D38] py-1">日</div>
         <div className="py-1">月</div>
         <div className="py-1">火</div>
         <div className="py-1">水</div>
         <div className="py-1">木</div>
         <div className="py-1">金</div>
-        <div className="text-cobalt py-1">土</div>
+        <div className="text-[#345B73] py-1">土</div>
       </div>
 
       {/* Calendar Days Grid */}
@@ -147,36 +169,51 @@ export default function TaskCalendar({ tasks, onToggleTask }: TaskCalendarProps)
         {calendarCells.map((cell, index) => {
           const dayTasks = getTasksForDate(cell.dayNum, cell.isCurrentMonth);
           const cellIsToday = isToday(cell.dayNum, cell.isCurrentMonth);
+          const holidayName = cell.isCurrentMonth ? getJapaneseHoliday(month + 1, cell.dayNum) : null;
+          const isSunday = index % 7 === 0;
 
           return (
             <div
               key={index}
-              className={`min-h-[72px] md:min-h-[84px] p-1.5 border rounded-xl flex flex-col justify-between transition-all ${
+              className={`min-h-[76px] md:min-h-[88px] p-1.5 border rounded-md flex flex-col justify-between transition-all bg-notebook-pattern ${
                 cell.isCurrentMonth
-                  ? "bg-white border-slate-100"
-                  : "bg-slate-50/50 border-slate-50 text-slate-300"
+                  ? holidayName || isSunday
+                    ? "bg-[#FAF8F5] border-[#E0DACB]"
+                    : "bg-[#FAF8F5] border-[#E0DACB]"
+                  : "bg-slate-100/40 border-[#E0DACB]/40 text-slate-300 opacity-50"
               } ${
                 cellIsToday 
-                  ? "ring-2 ring-cobalt border-transparent shadow-xs" 
-                  : "hover:border-slate-200"
+                  ? "ring-2 ring-[#345B73] border-transparent" 
+                  : "hover:border-[#345B73]"
               }`}
             >
-              {/* Day Number */}
-              <div className="flex items-center justify-between">
-                <span
-                  className={`text-[10px] md:text-xs font-extrabold ${
-                    cellIsToday
-                      ? "bg-cobalt text-white w-5 h-5 rounded-full flex items-center justify-center shrink-0"
-                      : cell.isCurrentMonth
-                      ? "text-slate-700"
-                      : "text-slate-300"
-                  }`}
-                >
-                  {cell.dayNum}
-                </span>
-                {dayTasks.length > 0 && cell.isCurrentMonth && (
-                  <span className="text-[9px] font-bold text-slate-400 bg-slate-100 px-1 rounded-sm">
-                    {dayTasks.length}件
+              {/* Day Number & Holiday Name */}
+              <div className="flex flex-col">
+                <div className="flex items-center justify-between">
+                  <span
+                    className={`text-[10px] md:text-xs font-bold ${
+                      cellIsToday
+                        ? "bg-[#244053] text-white w-5 h-5 rounded-full flex items-center justify-center shrink-0"
+                        : holidayName || isSunday
+                        ? "text-[#C24D38]"
+                        : cell.isCurrentMonth
+                        ? "text-[#22303C]"
+                        : "text-slate-300"
+                    }`}
+                  >
+                    {cell.dayNum}
+                  </span>
+                  {dayTasks.length > 0 && cell.isCurrentMonth && (
+                    <span className="text-[9px] font-bold text-[#345B73] bg-[#EAE6DF] px-1 rounded-xs border border-[#D5CFB9]">
+                      {dayTasks.length}件
+                    </span>
+                  )}
+                </div>
+
+                {/* Holiday Label in Red */}
+                {holidayName && cell.isCurrentMonth && (
+                  <span className="text-[8px] font-bold text-[#C24D38] truncate block mt-0.5">
+                    {holidayName}
                   </span>
                 )}
               </div>
@@ -189,7 +226,7 @@ export default function TaskCalendar({ tasks, onToggleTask }: TaskCalendarProps)
                       key={task.id}
                       onClick={() => onToggleTask && onToggleTask(task.id)}
                       title={`${task.title} (ステータス: ${task.completed ? "完了" : "未完了"})`}
-                      className={`w-full text-left truncate text-[9px] md:text-[10px] px-1 py-0.5 rounded-sm transition-all cursor-pointer ${getPriorityBgColor(
+                      className={`w-full text-left truncate text-[9px] md:text-[10px] px-1 py-0.5 rounded-xs transition-all cursor-pointer ${getPriorityBgColor(
                         task.priority,
                         task.completed
                       )}`}
