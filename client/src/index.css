@@ -1,28 +1,49 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+JP:wght@300;400;500;700&display=swap');
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "Inter", "Noto Sans JP", ui-sans-serif, system-ui, sans-serif;
-  --color-cobalt: #0047AB;
-  --color-accent: #5B8DEF;
-  --color-cobalt-light: #5B8DEF;
-  --color-slate-bg: #F8FAFC;
-  --color-dark-text: #1E293B;
-  --color-muted-text: #64748B;
+  --font-serif-brand: "Playfair Display", "Cinzel", "Noto Serif JP", serif;
+  --font-sans: "Noto Sans JP", ui-sans-serif, system-ui, sans-serif;
   
-  --radius-geometric: 16px;
-  --radius-card: 16px;
-  --shadow-geometric: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -2px rgba(0,0,0,0.05);
+  --color-deep-ocean: #244053;
+  --color-atlantic-blue: #345B73;
+  --color-cucumber-green: #5F7A6E;
+  --color-sage-green: #738A7C;
+  --color-burnished-red: #C24D38;
+  --color-ginger-amber: #C49A45;
+  --color-warm-paper: #F4F1EA;
+  --color-slate-bg: #F0EDE6;
+  --color-dark-text: #22303C;
+  --color-muted-text: #61727F;
+  --color-cobalt: #345B73;
 }
 
-/* Base custom styles to enforce Geometric Balance */
+/* Global Notebook Lined Grid Background for the entire application */
 body {
-  font-family: 'Inter', 'Noto Sans JP', sans-serif;
-  background-color: var(--color-slate-bg);
-  color: var(--color-dark-text);
+  font-family: var(--font-sans);
+  background-color: #f2efe9;
+  background-image: 
+    linear-gradient(to right, rgba(0, 0, 0, 0.04) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0, 0, 0, 0.04) 1px, transparent 1px);
+  background-size: 24px 24px;
+  color: #22303c;
+  margin: 0;
+  padding: 0;
 }
 
-/* Custom scrollbars and styling */
+.bg-notebook-pattern {
+  background-color: #f4f1ea;
+  background-image: 
+    linear-gradient(to right, rgba(0, 0, 0, 0.04) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0, 0, 0, 0.04) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+/* Font utility classes */
+.font-brand-serif {
+  font-family: "Playfair Display", "Cinzel", "Noto Serif JP", serif;
+}
+
+/* Custom scrollbars */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -37,5 +58,3 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
 }
-
-

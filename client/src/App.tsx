@@ -47,6 +47,7 @@ export default function App() {
     return [];
   });
   const [showTrashModal, setShowTrashModal] = useState<boolean>(false);
+  const [showProfileModal, setShowProfileModal] = useState<boolean>(false);
 
   const handleAddToTrash = (item: TrashItem) => {
     const updated = [item, ...trashItems];
@@ -522,6 +523,7 @@ export default function App() {
         user={user}
         onOpenTrash={() => setShowTrashModal(true)}
         trashCount={trashItems.length}
+        onOpenProfile={() => setShowProfileModal(true)}
       />
 
       {/* Central Screen Area */}
@@ -602,6 +604,51 @@ export default function App() {
                 </button>
               </div>
             )}
+          </div>
+        </div>
+      )}
+      {/* User Account Info Modal */}
+      {showProfileModal && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-[#F4F1EA] rounded-2xl border border-[#D5CFB9] p-6 w-full max-w-sm shadow-xl space-y-4 text-[#22303C] animate-fade-in">
+            <div className="flex items-center justify-between border-b border-[#D5CFB9] pb-3">
+              <h3 className="font-brand-serif font-bold text-base text-[#244053]">マイアカウント情報</h3>
+              <button onClick={() => setShowProfileModal(false)} className="text-slate-400 font-bold hover:text-slate-600 cursor-pointer">✕</button>
+            </div>
+
+            <div className="flex items-center gap-3.5 pt-1">
+              <div className="w-12 h-12 rounded-full bg-[#244053] text-white font-bold flex items-center justify-center text-base shadow-sm">
+                {user?.name?.substring(0, 2)?.toUpperCase() || "U"}
+              </div>
+              <div>
+                <h4 className="font-bold text-base text-[#22303C]">{user?.name || "ゲスト"}</h4>
+                <span className="text-xs text-[#345B73] font-bold">@{user?.username || "guest"}</span>
+              </div>
+            </div>
+
+            <div className="space-y-2 text-xs text-[#61727F] bg-white/90 p-3.5 rounded-xl border border-[#D5CFB9]">
+              <div><span className="font-bold text-[#4A5D6B]">ユーザーID:</span> {user?.username}</div>
+              <div><span className="font-bold text-[#4A5D6B]">アカウント状態:</span> 🟢 ログイン認証済み</div>
+              <div><span className="font-bold text-[#4A5D6B]">セッション:</span> 有効 (自動同期)</div>
+            </div>
+
+            <div className="flex justify-between items-center pt-2">
+              <button
+                onClick={() => {
+                  setShowProfileModal(false);
+                  handleLogout();
+                }}
+                className="text-[#C24D38] hover:underline text-xs font-bold cursor-pointer"
+              >
+                ログアウト
+              </button>
+              <button
+                onClick={() => setShowProfileModal(false)}
+                className="bg-[#244053] text-white font-bold px-4 py-2 rounded-xl text-xs cursor-pointer"
+              >
+                閉じる
+              </button>
+            </div>
           </div>
         </div>
       )}

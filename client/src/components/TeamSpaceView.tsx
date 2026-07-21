@@ -131,6 +131,9 @@ export default function TeamSpaceView({ onAddToTrash }: TeamSpaceViewProps) {
   // Task Details Modal State
   const [selectedTaskModal, setSelectedTaskModal] = useState<TeamTask | null>(null);
 
+  // Member Details Modal State
+  const [selectedMemberModal, setSelectedMemberModal] = useState<TeamMember | null>(null);
+
   // Toggle folder accordion
   const toggleFolderOpen = (folderName: string) => {
     setOpenFolders(prev => ({ ...prev, [folderName]: prev[folderName] === false }));
@@ -629,13 +632,10 @@ export default function TeamSpaceView({ onAddToTrash }: TeamSpaceViewProps) {
         {/* Header Banner */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 pb-5">
           <div>
-            <h1 className="font-sans font-black text-2xl md:text-3xl text-slate-800 tracking-tight flex items-center gap-2">
-              <Users className="w-8 h-8 text-cobalt shrink-0" />
-              <span>Team Space</span>
+            <h1 className="font-brand-serif font-black text-2xl md:text-3xl text-[#244053] tracking-tight flex items-center gap-2">
+              <Users className="w-8 h-8 text-[#345B73] shrink-0" />
+              <span>チームスペース</span>
             </h1>
-            <p className="text-slate-500 text-xs md:text-sm font-medium mt-1">
-              大学のゼミ・サークル・委員会の共有ワークスペース一覧
-            </p>
           </div>
 
           <button
@@ -847,8 +847,9 @@ export default function TeamSpaceView({ onAddToTrash }: TeamSpaceViewProps) {
               {teamMembers.map((m) => (
                 <div 
                   key={m.id}
-                  className={`w-6 h-6 rounded-full text-[9px] text-white flex items-center justify-center font-bold border-2 border-white shadow-2xs ${m.avatarColor}`}
-                  title={`${m.name} (${m.role})`}
+                  onClick={() => setSelectedMemberModal(m)}
+                  className={`w-7 h-7 rounded-full text-[10px] text-white flex items-center justify-center font-bold border-2 border-white shadow-2xs cursor-pointer hover:scale-110 transition-transform ${m.avatarColor}`}
+                  title={`クリックで${m.name}の詳細を表示`}
                 >
                   {m.name.slice(0, 1)}
                 </div>
@@ -887,8 +888,7 @@ export default function TeamSpaceView({ onAddToTrash }: TeamSpaceViewProps) {
               <div className="flex items-center gap-2">
                 <Folder className="w-5 h-5 text-cobalt" />
                 <div>
-                  <h3 className="font-sans font-extrabold text-slate-800 text-sm md:text-base">ファイル・フォルダ & 共有タスク</h3>
-                  <p className="text-slate-400 text-[10px] font-semibold mt-0.5">タスクはドラッグ＆ドロップでフォルダに格納できます</p>
+                  <h3 className="font-sans font-extrabold text-[#22303C] text-sm md:text-base">ファイル・フォルダ & 共有タスク</h3>
                 </div>
               </div>
 
@@ -1150,13 +1150,10 @@ export default function TeamSpaceView({ onAddToTrash }: TeamSpaceViewProps) {
           
           <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-xs space-y-4">
             <div className="border-b border-slate-100 pb-3">
-              <h3 className="font-sans font-bold text-slate-800 text-sm md:text-base flex items-center gap-2">
-                <Share2 className="w-4.5 h-4.5 text-cobalt shrink-0" />
+              <h3 className="font-sans font-bold text-[#22303C] text-sm md:text-base flex items-center gap-2">
+                <Share2 className="w-4.5 h-4.5 text-[#345B73] shrink-0" />
                 <span>➕ 共有タスクを登録</span>
               </h3>
-              <p className="text-slate-400 text-[10px] font-medium mt-0.5">
-                必要事項を入力して共有スペースに追加します
-              </p>
             </div>
 
             <form onSubmit={handleCreateTask} className="space-y-4 text-xs">
@@ -1487,6 +1484,41 @@ export default function TeamSpaceView({ onAddToTrash }: TeamSpaceViewProps) {
                 <button type="submit" className="bg-cobalt text-white font-bold px-5 py-2 rounded-xl shadow-md cursor-pointer">作成する</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {/* MODAL: MEMBER DETAILS */}
+      {selectedMemberModal && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-[#F4F1EA] rounded-2xl border border-[#D5CFB9] p-6 w-full max-w-sm shadow-xl space-y-4 text-[#22303C] animate-fade-in">
+            <div className="flex items-center justify-between border-b border-[#D5CFB9] pb-3">
+              <h3 className="font-brand-serif font-bold text-base text-[#244053]">メンバー詳細情報</h3>
+              <button onClick={() => setSelectedMemberModal(null)} className="text-slate-400 font-bold hover:text-slate-600 cursor-pointer">✕</button>
+            </div>
+            
+            <div className="flex items-center gap-3.5 pt-1">
+              <div className={`w-12 h-12 rounded-full text-white font-bold flex items-center justify-center text-lg shadow-sm ${selectedMemberModal.avatarColor}`}>
+                {selectedMemberModal.name.slice(0, 1)}
+              </div>
+              <div>
+                <h4 className="font-bold text-base text-[#22303C]">{selectedMemberModal.name}</h4>
+                <span className="text-xs text-[#345B73] font-bold bg-[#EAE6DF] px-2 py-0.5 rounded border border-[#D5CFB9] inline-block mt-0.5">
+                  {selectedMemberModal.role}
+                </span>
+              </div>
+            </div>
+
+            <div className="space-y-2 text-xs text-[#61727F] bg-white/90 p-3.5 rounded-xl border border-[#D5CFB9]">
+              <div><span className="font-bold text-[#4A5D6B]">担当中タスク:</span> {selectedMemberModal.activeTask || "未割り当て"}</div>
+              <div><span className="font-bold text-[#4A5D6B]">ステータス:</span> {selectedMemberModal.status === "active" ? "🟢 オンライン (アクティブ)" : "⚪ オフライン"}</div>
+            </div>
+
+            <button 
+              onClick={() => setSelectedMemberModal(null)} 
+              className="w-full bg-[#244053] hover:bg-[#1A3141] text-white font-bold py-2.5 rounded-xl text-xs shadow-md transition-colors cursor-pointer"
+            >
+              閉じる
+            </button>
           </div>
         </div>
       )}
