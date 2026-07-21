@@ -13,7 +13,7 @@ export default function FocusSession({
   onClose,
   onCompleteTask,
 }: FocusSessionProps) {
-  const [timeLeft, setTimeLeft] = useState(25 * 60); // 25 minutes pomodoro by default
+  const [timeLeft, setTimeLeft] = useState(30 * 60); // 30 minutes focus session
   const [isActive, setIsActive] = useState(true);
   const [isFinished, setIsFinished] = useState(false);
 
@@ -27,7 +27,6 @@ export default function FocusSession({
     } else if (timeLeft === 0 && !isFinished) {
       setIsActive(false);
       setIsFinished(true);
-      // Play a subtle notification or auto-complete if needed
     }
 
     return () => clearInterval(interval);
@@ -53,7 +52,7 @@ export default function FocusSession({
     onClose();
   };
 
-  const percentage = (timeLeft / (25 * 60)) * 100;
+  const percentage = (timeLeft / (30 * 60)) * 100;
 
   return (
     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-50 flex items-center justify-center p-4">
@@ -74,14 +73,11 @@ export default function FocusSession({
           <>
             <div className="space-y-1">
               <span className="text-[10px] bg-cobalt/10 text-cobalt font-extrabold px-2.5 py-1 rounded-full uppercase tracking-widest">
-                Focus Session Active
+                Focus Session
               </span>
-              <h2 className="font-sans font-bold text-slate-800 text-lg md:text-xl mt-2 line-clamp-1">
-                {task.title}
+              <h2 className="font-sans font-black text-slate-800 text-2xl tracking-tight mt-2">
+                Focus
               </h2>
-              <p className="text-slate-400 text-xs font-semibold">
-                {task.category} • 目標: 25分集中
-              </p>
             </div>
 
             {/* Timer circle visualization */}

@@ -16,7 +16,7 @@ import Dashboard from "./components/Dashboard";
 import TasksView from "./components/TasksView";
 import TeamSpaceView from "./components/TeamSpaceView";
 import FocusSession from "./components/FocusSession";
-import type { Task, TrashItem } from "./types";
+import type { Task, PriorityType, TrashItem } from "./types";
 
 const INITIAL_TASKS: Task[] = [];
 const API_BASE = "";
@@ -34,7 +34,7 @@ export default function App() {
   const [errorMsg, setErrorMsg] = useState<string>("");
 
   // Tab & UI States
-  const [currentTab, setCurrentTab] = useState<string>("dashboard");
+  const [currentTab, setCurrentTab] = useState<string>("tasks");
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>("");
 
@@ -336,23 +336,30 @@ export default function App() {
     }
   };
 
+  const handleUpdatePriority = async (id: string, priority: PriorityType) => {
+    try {
+      const token = localStorage.getItem("todone_user_token");
+      const res = await fetch(`${API_BASE}/api/tasks/${id}`, {
+        method: "PUT",
+        headers: { 
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ priority })
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setTasks((prev) => prev.map((t) => (t.id === id ? updated : t)));
+      }
+    } catch (err) {
+      console.error("Error updating priority:", err);
+    }
+  };
+
   const renderActiveTab = () => {
     switch (currentTab) {
-      case "dashboard":
-        return (
-          <Dashboard
-            tasks={tasks}
-            onToggleTask={handleToggleTask}
-            onAddTaskClick={() => setCurrentTab("tasks")}
-            onStartFocusSession={(task) => setActiveFocusTask(task)}
-            onDeleteTask={handleDeleteTask}
-            searchQuery={searchQuery}
-            setSearchQuery={setSearchQuery}
-            user={user}
-            onLogout={handleLogout}
-          />
-        );
       case "tasks":
+      default:
         return (
           <TasksView
             tasks={tasks}
@@ -361,12 +368,11 @@ export default function App() {
             onDeleteTask={handleDeleteTask}
             onStartFocusSession={(task) => setActiveFocusTask(task)}
             onAddToTrash={handleAddToTrash}
+            onUpdatePriority={handleUpdatePriority}
           />
         );
       case "team":
         return <TeamSpaceView onAddToTrash={handleAddToTrash} />;
-      default:
-        return <div>Tab not found</div>;
     }
   };
 

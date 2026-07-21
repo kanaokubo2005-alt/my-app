@@ -2,22 +2,25 @@ import React, { useState } from "react";
 import { 
   Plus, 
   Trash2, 
-  Calendar, 
+  Calendar as CalendarIcon, 
   Clock, 
   AlertCircle, 
   Filter, 
   ListFilter, 
   RotateCcw, 
   Check,
-  ArrowUpCircle,
-  ArrowRightCircle,
-  ArrowDownCircle,
+  CheckSquare,
+  Square,
   Flame,
   Play,
   CheckCircle2,
-  X
+  X,
+  ChevronDown,
+  ChevronUp,
+  Tag
 } from "lucide-react";
 import type { Task, PriorityType, TrashItem } from "../types";
+import TaskCalendar from "./TaskCalendar";
 
 interface TasksViewProps {
   tasks: Task[];
@@ -26,6 +29,7 @@ interface TasksViewProps {
   onDeleteTask: (id: string) => void;
   onStartFocusSession: (task: Task) => void;
   onAddToTrash?: (item: TrashItem) => void;
+  onUpdatePriority?: (id: string, priority: PriorityType) => void;
 }
 
 export default function TasksView({
@@ -34,16 +38,16 @@ export default function TasksView({
   onToggleTask,
   onDeleteTask,
   onStartFocusSession,
-  onAddToTrash
+  onAddToTrash,
+  onUpdatePriority
 }: TasksViewProps) {
-  const [showCompletedModal, setShowCompletedModal] = useState(false);
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState("大学");
   const [priority, setPriority] = useState<PriorityType>("medium");
   const [deadline, setDeadline] = useState(() => {
     const d = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
     d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
-    return d.toISOString().slice(0, 16); // YYYY-MM-DDTHH:mm
+    return d.toISOString().slice(0, 16);
   });
   
   // Custom categories list state
@@ -58,11 +62,29 @@ export default function TasksView({
     }
     return ["大学", "サークル", "就活"];
   });
+
   const [newCatName, setNewCatName] = useState("");
   const [showAddCatInput, setShowAddCatInput] = useState(false);
 
-  // Filtering state (priority and status filters removed as requested)
+  // Filters state
   const [filterCategory, setFilterCategory] = useState("all");
+  const [filterStatus, setFilterStatus] = useState("all"); // "all" | "active" | "completed"
+
+  // Calendar visibility toggle
+  const [showCalendar, setShowCalendar] = useState(true);
+
+  // Category addition handler
+  const handleAddCategorySubmit = () => {
+    const val = newCatName.trim();
+    if (val) {
+      const updated = categories.includes(val) ? categories : [...categories, val];
+      setCategories(updated);
+      localStorage.setItem("todone_custom_categories", JSON.stringify(updated));
+      setCategory(val);
+      setNewCatName("");
+      setShowAddCatInput(false);
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -71,9 +93,9 @@ export default function TasksView({
     const newTask: Task = {
       id: Date.now().toString(),
       title: title.trim(),
-      category,
+      category: category === "add_new" ? (categories[0] || "大学") : category,
       priority,
-      duration: null, // Time duration input is removed
+      duration: null,
       deadline,
       completed: false
     };
@@ -84,14 +106,18 @@ export default function TasksView({
 
   const getPriorityScore = (p: PriorityType) => {
     if (p === 'high') return 3;
-    if (p === 'medium') return 2;
     return 1;
   };
 
-  // Process tasks: sorted strictly by priority score then deadline by default
+  // Filter & Sort tasks
   const processedTasks = tasks
     .filter((task) => {
-      return filterCategory === "all" || task.category === filterCategory;
+      const matchCat = filterCategory === "all" || task.category === filterCategory;
+      const matchStatus = 
+        filterStatus === "all" ? true :
+        filterStatus === "active" ? !task.completed :
+        filterStatus === "completed" ? task.completed : true;
+      return matchCat && matchStatus;
     })
     .sort((a, b) => {
       const scoreA = getPriorityScore(a.priority);
@@ -102,145 +128,145 @@ export default function TasksView({
       return new Date(a.deadline).getTime() - new Date(b.deadline).getTime();
     });
 
-  const getPriorityBadgeClass = (p: string) => {
-    switch (p) {
-      case "high": return "bg-rose-50 border border-rose-100 text-rose-600 font-extrabold";
-      case "medium":
-      default: return "bg-amber-50 border border-amber-100 text-amber-600 font-bold";
+  // Inline Priority Toggle for existing task
+  const handleTogglePriority = (task: Task, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const nextPriority: PriorityType = task.priority === "high" ? "medium" : "high";
+    if (onUpdatePriority) {
+      onUpdatePriority(task.id, nextPriority);
+    } else {
+      task.priority = nextPriority;
+      // Trigger local rerender by updating categories state or task reference
+      setCategories([...categories]);
     }
   };
 
   return (
-    <div className="flex-1 overflow-y-auto bg-slate-bg p-4 md:p-8 space-y-6">
+    <div className="flex-1 overflow-y-auto bg-[#f8faf7] p-4 md:p-8 space-y-6 text-slate-700 font-sans">
+      
       {/* View Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200/80 pb-4">
         <div>
-          <h1 className="font-sans font-bold text-2xl md:text-3xl text-slate-800 tracking-tight">📝 Tasks Management</h1>
-          <p className="text-slate-400 text-xs md:text-sm font-medium mt-1">
-            日々のすべての予定をここで一元管理・新規登録できます
+          <h1 className="font-sans font-black text-2xl md:text-3xl text-slate-800 tracking-tight flex items-center gap-2.5">
+            <span>📝</span>
+            <span>Personal Planner & Tasks</span>
+          </h1>
+          <p className="text-slate-500 text-xs md:text-sm font-semibold mt-1">
+            手帳スタイルの個人タスク管理とスケジュールカレンダー
           </p>
         </div>
 
-        {/* Button to show completed tasks modal */}
         <button
-          onClick={() => setShowCompletedModal(true)}
-          className="flex items-center gap-1.5 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 font-bold px-3.5 py-2 rounded-xl text-xs transition-all shadow-2xs cursor-pointer shrink-0"
+          onClick={() => setShowCalendar(!showCalendar)}
+          className="bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 font-bold px-3.5 py-2 rounded-xl text-xs flex items-center gap-2 transition-all shadow-xs cursor-pointer self-start md:self-auto"
         >
-          <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-          <span>完了したタスクを表示 ({tasks.filter(t => t.completed).length}件)</span>
+          <CalendarIcon className="w-4 h-4 text-cobalt" />
+          <span>{showCalendar ? "カレンダーを閉じる" : "カレンダーを表示"}</span>
+          {showCalendar ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
         </button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+      {/* Integrated Calendar View */}
+      {showCalendar && (
+        <div className="bg-white rounded-2xl border border-slate-200/80 p-4 md:p-6 shadow-xs animate-fade-in space-y-3">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+            <h3 className="font-sans font-bold text-slate-800 text-sm md:text-base flex items-center gap-2">
+              <CalendarIcon className="w-4.5 h-4.5 text-cobalt" />
+              <span>月間タスクカレンダー</span>
+            </h3>
+            <span className="text-[10px] text-slate-400 font-bold">日付ごとの締切タスクが同期されます</span>
+          </div>
+          <TaskCalendar tasks={tasks} onToggleTask={onToggleTask} />
+        </div>
+      )}
+
+      {/* 2-Column Split: Form (Left) & Notebook Task List (Right) */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8 items-start">
+        
         {/* Left side: Add Task Form */}
-        <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-xs lg:col-span-1">
-          <h2 className="font-sans font-bold text-slate-800 text-base md:text-lg mb-5 flex items-center gap-2">
+        <div className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-xs lg:col-span-1 space-y-4">
+          <h2 className="font-sans font-extrabold text-slate-800 text-base md:text-lg border-b border-slate-100 pb-3 flex items-center gap-2">
             <Plus className="w-5 h-5 text-cobalt" />
             <span>タスクを新規登録</span>
           </h2>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-xs font-bold text-slate-500 mb-1.5">タスク名</label>
+              <label className="block text-xs font-bold text-slate-600 mb-1.5">タスク名 <span className="text-rose-500">*</span></label>
               <input
                 type="text"
-                placeholder="例: 憲法レポートを作成する"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
+                placeholder="例: マクロ経済学 レポート提出"
                 required
-                className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-2.5 text-sm focus:outline-hidden focus:ring-1 focus:ring-cobalt focus:bg-white text-slate-700 placeholder:text-slate-400 transition-all"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs md:text-sm font-semibold text-slate-700 focus:outline-hidden focus:bg-white focus:ring-1 focus:ring-cobalt transition-all"
               />
             </div>
 
-             <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-3">
               <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="block text-xs font-bold text-slate-500">カテゴリー</label>
-                  {!showAddCatInput && (
-                    <button
-                      type="button"
-                      onClick={() => setShowAddCatInput(true)}
-                      className="text-[10px] text-cobalt font-bold hover:underline cursor-pointer"
-                    >
-                      ＋追加
-                    </button>
-                  )}
-                </div>
+                <label className="block text-xs font-bold text-slate-600 mb-1.5">カテゴリー</label>
                 <select
                   value={category}
                   onChange={(e) => {
                     if (e.target.value === "add_new") {
                       setShowAddCatInput(true);
+                      setNewCatName("");
                     } else {
                       setCategory(e.target.value);
                     }
                   }}
-                  className="w-full bg-slate-50 border border-slate-100 rounded-xl px-3 py-2.5 text-xs md:text-sm focus:outline-hidden focus:ring-1 focus:ring-cobalt focus:bg-white text-slate-700 transition-all"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs md:text-sm font-semibold text-slate-700 focus:outline-hidden cursor-pointer"
                 >
                   {categories.map((cat) => (
                     <option key={cat} value={cat}>{cat}</option>
                   ))}
                   <option value="add_new" className="text-cobalt font-bold">＋カテゴリーをカスタマイズ追加</option>
                 </select>
+
+                {/* Custom Category Input Inline Form */}
                 {showAddCatInput && (
-                  <div className="mt-2 flex gap-1.5 animate-fade-in">
+                  <div className="mt-2.5 p-2 bg-slate-50 border border-cobalt/30 rounded-xl space-y-2 animate-fade-in">
                     <input
                       type="text"
-                      placeholder="新しいカテゴリ名"
+                      placeholder="新しいカテゴリー名 (例: 旅行)"
                       value={newCatName}
                       autoFocus
                       onChange={(e) => setNewCatName(e.target.value)}
                       onKeyDown={(e) => {
                         if (e.key === "Enter") {
                           e.preventDefault();
-                          e.stopPropagation();
-                          const val = newCatName.trim();
-                          if (val) {
-                            const updated = categories.includes(val) ? categories : [...categories, val];
-                            setCategories(updated);
-                            localStorage.setItem("todone_custom_categories", JSON.stringify(updated));
-                            setCategory(val);
-                            setNewCatName("");
-                            setShowAddCatInput(false);
-                          }
+                          handleAddCategorySubmit();
                         }
                       }}
-                      className="flex-1 bg-white border border-cobalt/40 rounded-lg px-2.5 py-1.5 text-xs focus:outline-hidden text-slate-700 shadow-xs"
+                      className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-700 font-bold focus:outline-hidden"
                     />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const val = newCatName.trim();
-                        if (val) {
-                          const updated = categories.includes(val) ? categories : [...categories, val];
-                          setCategories(updated);
-                          localStorage.setItem("todone_custom_categories", JSON.stringify(updated));
-                          setCategory(val);
-                          setNewCatName("");
-                          setShowAddCatInput(false);
-                        }
-                      }}
-                      className="bg-cobalt text-white text-xs px-3 py-1.5 rounded-lg font-bold hover:bg-cobalt/90 cursor-pointer shrink-0"
-                    >
-                      追加
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setShowAddCatInput(false)}
-                      className="border border-slate-200 text-slate-500 text-xs px-2.5 py-1.5 rounded-lg hover:bg-slate-50 cursor-pointer shrink-0"
-                    >
-                      ×
-                    </button>
+                    <div className="flex justify-end gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setShowAddCatInput(false)}
+                        className="text-slate-400 hover:text-slate-600 text-xs px-2 font-bold"
+                      >
+                        ×
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleAddCategorySubmit}
+                        className="bg-cobalt text-white text-xs px-3 py-1 rounded-lg font-bold shadow-xs cursor-pointer"
+                      >
+                        追加
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-500 mb-1.5">優先度</label>
+                <label className="block text-xs font-bold text-slate-600 mb-1.5">優先度</label>
                 <select
                   value={priority}
                   onChange={(e) => setPriority(e.target.value as PriorityType)}
-                  className="w-full bg-slate-50 border border-slate-100 rounded-xl px-3 py-2.5 text-xs md:text-sm focus:outline-hidden focus:ring-1 focus:ring-cobalt focus:bg-white text-slate-700 transition-all"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs md:text-sm font-semibold text-slate-700 focus:outline-hidden cursor-pointer"
                 >
                   <option value="high">最重要 (赤)</option>
                   <option value="medium">通常</option>
@@ -249,234 +275,187 @@ export default function TasksView({
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-500 mb-1.5">締切日時</label>
+              <label className="block text-xs font-bold text-slate-600 mb-1.5">締切日時</label>
               <input
                 type="datetime-local"
                 value={deadline}
                 onChange={(e) => setDeadline(e.target.value)}
                 required
-                className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-2.5 text-xs md:text-sm focus:outline-hidden focus:ring-1 focus:ring-cobalt focus:bg-white text-slate-700 transition-all"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs md:text-sm font-semibold text-slate-700 focus:outline-hidden focus:bg-white focus:ring-1 focus:ring-cobalt"
               />
             </div>
 
             <button
               type="submit"
-              className="w-full bg-cobalt hover:bg-cobalt/95 text-white font-semibold py-3 rounded-xl text-sm shadow-md shadow-cobalt/10 hover:shadow-lg hover:shadow-cobalt/20 transition-all cursor-pointer mt-2"
+              className="w-full bg-cobalt hover:bg-cobalt/95 text-white font-bold py-3 rounded-xl text-xs md:text-sm shadow-md shadow-cobalt/15 transition-all cursor-pointer mt-2"
             >
               タスクを追加する
             </button>
           </form>
         </div>
 
-        {/* Right side: Task filter control & task list */}
+        {/* Right side: Notebook Grid Lined Task Management Area */}
         <div className="lg:col-span-2 space-y-4">
-          {/* Controls Bar */}
-          <div className="bg-white rounded-2xl border border-slate-100 p-4 shadow-xs flex flex-wrap items-center justify-between gap-3 text-xs md:text-sm">
-            <div className="flex items-center gap-1.5">
-              <Filter className="w-3.5 h-3.5 text-slate-400" />
-              <select
-                value={filterCategory}
-                onChange={(e) => setFilterCategory(e.target.value)}
-                className="bg-slate-50 border border-slate-100 rounded-lg px-2.5 py-1.5 font-medium text-slate-600 focus:outline-hidden cursor-pointer"
-              >
-                <option value="all">すべてのカテゴリー</option>
-                {categories.map((cat) => (
-                  <option key={cat} value={cat}>{cat}</option>
-                ))}
-              </select>
+          
+          {/* Controls Bar: Category Filter & Status Filter Side by Side */}
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-xs flex flex-wrap items-center justify-between gap-3 text-xs md:text-sm">
+            <div className="flex flex-wrap items-center gap-3">
+              {/* Category Filter */}
+              <div className="flex items-center gap-1.5">
+                <Filter className="w-3.5 h-3.5 text-slate-400" />
+                <select
+                  value={filterCategory}
+                  onChange={(e) => setFilterCategory(e.target.value)}
+                  className="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 font-bold text-slate-600 focus:outline-hidden cursor-pointer text-xs"
+                >
+                  <option value="all">すべてのカテゴリー</option>
+                  {categories.map((cat) => (
+                    <option key={cat} value={cat}>{cat}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Status Filter (Next to Category Filter) */}
+              <div className="flex items-center gap-1.5">
+                <ListFilter className="w-3.5 h-3.5 text-slate-400" />
+                <select
+                  value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value)}
+                  className="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 font-bold text-slate-600 focus:outline-hidden cursor-pointer text-xs"
+                >
+                  <option value="all">すべてのタスク</option>
+                  <option value="active">未完了のみ</option>
+                  <option value="completed">完了したタスクのみ</option>
+                </select>
+              </div>
             </div>
 
-            <button
-              onClick={() => setShowCompletedModal(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-xl font-bold hover:bg-emerald-100 transition-colors cursor-pointer text-xs"
-            >
-              <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-              <span>完了したタスクを表示 ({tasks.filter(t => t.completed).length}件)</span>
-            </button>
+            <span className="text-[10px] text-slate-400 font-bold">
+              全 {processedTasks.length}件のタスク
+            </span>
           </div>
 
-          {/* List display */}
-          <div className="space-y-3">
+          {/* Notebook Lined Paper Task Container */}
+          <div className="bg-white rounded-2xl border border-slate-250 p-5 md:p-6 shadow-sm space-y-3 relative overflow-hidden bg-[linear-gradient(to_right,#e5e7eb_1px,transparent_1px),linear-gradient(to_bottom,#e5e7eb_1px,transparent_1px)] bg-[size:24px_24px]">
+            <div className="flex items-center justify-between border-b-2 border-slate-300 pb-2 mb-4 bg-white/90 p-2 rounded-lg">
+              <span className="font-sans font-black text-slate-800 text-sm tracking-wider uppercase flex items-center gap-2">
+                <span>📖</span>
+                <span>My Notebook Planner</span>
+              </span>
+              <span className="text-[10px] text-slate-400 font-extrabold">クリックで優先度変更 / 集中タイマー起動</span>
+            </div>
+
             {processedTasks.length === 0 ? (
-              <div className="bg-white rounded-2xl border border-slate-100 p-8 text-center space-y-2">
-                <div className="w-10 h-10 bg-slate-50 text-slate-400 rounded-full flex items-center justify-center mx-auto">
-                  <CheckCircle2 className="w-5 h-5" />
-                </div>
-                <p className="font-semibold text-slate-700 text-sm">該当するタスクはありません</p>
-                <p className="text-slate-400 text-xs">新しいタスクを追加してください</p>
+              <div className="bg-white/95 rounded-xl border border-slate-200 p-8 text-center space-y-2">
+                <p className="font-bold text-slate-600 text-xs md:text-sm">該当するタスクはありません</p>
+                <p className="text-slate-400 text-xs">左側のフォームから新しいタスクを追加してください</p>
               </div>
             ) : (
-              processedTasks.map((task) => (
-                <div
-                  key={task.id}
-                  className={`rounded-2xl border p-4 flex items-center justify-between gap-4 shadow-xs hover:shadow-md transition-all group ${
-                    task.completed 
-                      ? "bg-slate-100 border-slate-200 opacity-80" 
-                      : task.priority === "high"
-                        ? "bg-rose-50/80 border-rose-200"
-                        : "bg-white border-slate-100"
-                  }`}
-                >
-                  <div className="flex items-center gap-3.5 min-w-0">
-                    <button
-                      onClick={() => onToggleTask(task.id)}
-                      className={`w-5.5 h-5.5 rounded-lg border-2 flex items-center justify-center shrink-0 cursor-pointer transition-colors ${
+              <div className="space-y-2.5">
+                {processedTasks.map((task) => {
+                  const isMust = task.priority === "high";
+
+                  return (
+                    <div
+                      key={task.id}
+                      className={`rounded-xl border p-3.5 md:p-4 flex items-center justify-between gap-3.5 transition-all bg-white/95 shadow-xs hover:shadow-md ${
                         task.completed 
-                          ? "bg-cobalt border-cobalt text-white" 
-                          : "border-slate-200 hover:border-cobalt"
+                          ? "border-slate-200 opacity-70 bg-slate-50/80" 
+                          : isMust
+                            ? "border-rose-200 bg-rose-50/30"
+                            : "border-slate-200 hover:border-cobalt/40"
                       }`}
                     >
-                      {task.completed && (
-                        <svg className="w-3.5 h-3.5 stroke-[3] text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                        </svg>
-                      )}
-                    </button>
+                      {/* Notebook Square Checkbox & Title */}
+                      <div className="flex items-center gap-3 min-w-0">
+                        <button
+                          onClick={() => onToggleTask(task.id)}
+                          className="text-slate-600 hover:text-cobalt transition-colors cursor-pointer shrink-0"
+                          title={task.completed ? "未完了に戻す" : "完了にする"}
+                        >
+                          {task.completed ? (
+                            <CheckSquare className="w-5 h-5 text-cobalt fill-cobalt/10 stroke-[2.5]" />
+                          ) : (
+                            <Square className="w-5 h-5 text-slate-400 stroke-[2]" />
+                          )}
+                        </button>
 
-                    <div className="min-w-0">
-                      <span className={`font-sans font-bold text-sm text-slate-700 block truncate ${
-                        task.completed ? "line-through text-slate-400" : ""
-                      }`}>
-                        {task.title}
-                      </span>
-                      
-                      <div className="flex flex-wrap items-center gap-2 mt-1.5 text-[10px] text-slate-400 font-medium">
-                        <span className="bg-slate-200/60 px-1.5 py-0.5 rounded-md text-slate-500">
-                          {task.category}
-                        </span>
-                        {task.priority === "high" && (
-                          <span className="px-1.5 py-0.5 rounded-md text-[10px] bg-rose-50 text-rose-600 border border-rose-100 font-extrabold">
-                            最重要
+                        <div className="min-w-0">
+                          <span className={`font-sans font-extrabold text-xs md:text-sm text-slate-800 block truncate ${
+                            task.completed ? "line-through text-slate-400" : ""
+                          }`}>
+                            {task.title}
                           </span>
-                        )}
-                        <span className="flex items-center gap-0.5">
-                          <Calendar className="w-3 h-3 text-slate-300" />
-                          締切: {task.deadline.replace("T", " ")}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
+                          
+                          <div className="flex flex-wrap items-center gap-2 mt-1 text-[10px] text-slate-500 font-semibold">
+                            <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md border border-slate-200/60">
+                              {task.category}
+                            </span>
+                            
+                            {/* Interactive Priority Switcher Button */}
+                            <button
+                              type="button"
+                              onClick={(e) => handleTogglePriority(task, e)}
+                              title="クリックで優先度を変更"
+                              className={`px-2 py-0.5 rounded-md border font-extrabold transition-all cursor-pointer ${
+                                isMust
+                                  ? "bg-rose-50 text-rose-600 border-rose-200 hover:bg-rose-100"
+                                  : "bg-slate-100 text-slate-500 border-slate-200 hover:bg-slate-200"
+                              }`}
+                            >
+                              {isMust ? "最重要 (赤)" : "通常"}
+                            </button>
 
-                  {/* Actions buttons */}
-                  <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button
-                      onClick={() => {
-                        if (onAddToTrash) {
-                          onAddToTrash({
-                            id: `trash-task-${Date.now()}`,
-                            type: "individual_task",
-                            title: task.title,
-                            deletedAt: new Date().toLocaleString("ja-JP"),
-                            originalData: task
-                          });
-                        }
-                        onDeleteTask(task.id);
-                      }}
-                      title="削除"
-                      className="p-2 text-slate-400 hover:text-rose-500 hover:bg-slate-50 rounded-lg transition-colors cursor-pointer"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Completed Tasks Modal */}
-      {showCompletedModal && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-xl border border-slate-100 w-full max-w-2xl flex flex-col max-h-[85vh] animate-fade-in">
-            {/* Modal Header */}
-            <div className="p-5 border-b border-slate-100 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="p-2 bg-emerald-50 rounded-xl text-emerald-500">
-                  <CheckCircle2 className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="font-sans font-bold text-slate-800 text-base">完了したタスク一覧</h3>
-                  <p className="text-slate-400 text-[11px] font-medium">これまでに達成された学習の成果です</p>
-                </div>
-              </div>
-              <button 
-                onClick={() => setShowCompletedModal(false)}
-                className="p-2 hover:bg-slate-50 rounded-xl text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Modal Body */}
-            <div className="p-6 overflow-y-auto space-y-4 flex-1">
-              {tasks.filter(t => t.completed).length === 0 ? (
-                <div className="text-center py-16 space-y-2">
-                  <AlertCircle className="w-8 h-8 text-slate-300 mx-auto" />
-                  <p className="text-sm font-bold text-slate-500">完了したタスクはまだありません</p>
-                  <p className="text-xs text-slate-400">タスクに取り組み完了させると、ここに成果が蓄積されます！</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {tasks.filter(t => t.completed).map((task) => (
-                    <div 
-                      key={task.id}
-                      className="p-4 bg-slate-50/50 border border-slate-100 rounded-xl flex items-center justify-between gap-4 hover:border-slate-200 transition-all"
-                    >
-                      <div className="min-w-0 space-y-1">
-                        <span className="font-semibold text-xs md:text-sm text-slate-700 block truncate line-through opacity-70">
-                          {task.title}
-                        </span>
-                        <div className="flex flex-wrap items-center gap-2 text-[10px] text-slate-400 font-medium">
-                          <span className="bg-slate-100 px-1.5 py-0.5 rounded text-slate-500">
-                            {task.category}
-                          </span>
-                          <span className={`px-1.5 py-0.5 rounded text-[10px] ${getPriorityBadgeClass(task.priority)}`}>
-                            {task.priority === "high" ? "最重要" : "重要"}
-                          </span>
-                          <span className="flex items-center gap-0.5">
-                            <Calendar className="w-3 h-3 text-slate-300" />
-                            締切: {task.deadline}
-                          </span>
+                            <span className="flex items-center gap-1 text-slate-400">
+                              <CalendarIcon className="w-3 h-3 text-slate-400" />
+                              締切: {task.deadline.replace("T", " ")}
+                            </span>
+                          </div>
                         </div>
                       </div>
 
-                      {/* Action buttons */}
+                      {/* Actions: Start Focus & Delete */}
                       <div className="flex items-center gap-2 shrink-0">
+                        {!task.completed && (
+                          <button
+                            onClick={() => onStartFocusSession(task)}
+                            className="bg-cobalt hover:bg-cobalt/95 text-white font-bold px-2.5 py-1 rounded-lg text-[10px] flex items-center gap-1 shadow-2xs transition-all cursor-pointer"
+                          >
+                            <Play className="w-3 h-3 fill-current" />
+                            <span>Focus</span>
+                          </button>
+                        )}
+
                         <button
-                          onClick={() => onToggleTask(task.id)}
-                          className="flex items-center gap-1 bg-white hover:bg-slate-100 border border-slate-200 text-slate-600 font-bold px-2.5 py-1.5 rounded-lg text-[10px] transition-all cursor-pointer shadow-3xs"
-                          title="タスクを未完了に戻す"
+                          onClick={() => {
+                            if (onAddToTrash) {
+                              onAddToTrash({
+                                id: `trash-task-${Date.now()}`,
+                                type: "individual_task",
+                                title: task.title,
+                                deletedAt: new Date().toLocaleString("ja-JP"),
+                                originalData: task
+                              });
+                            }
+                            onDeleteTask(task.id);
+                          }}
+                          title="削除（ゴミ箱へ移動）"
+                          className="p-1.5 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
                         >
-                          <RotateCcw className="w-3 h-3 text-cobalt" />
-                          <span>未完了に戻す</span>
-                        </button>
-                        <button
-                          onClick={() => onDeleteTask(task.id)}
-                          className="p-1.5 text-slate-400 hover:text-rose-500 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
-                          title="タスクを削除"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
+                          <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Modal Footer */}
-            <div className="p-4 border-t border-slate-100 bg-slate-50/50 rounded-b-2xl flex justify-end">
-              <button 
-                onClick={() => setShowCompletedModal(false)}
-                className="bg-slate-800 hover:bg-slate-900 text-white font-bold px-4 py-2 rounded-xl text-xs cursor-pointer transition-colors"
-              >
-                閉じる
-              </button>
-            </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
+
         </div>
-      )}
+
+      </div>
+
     </div>
   );
 }
