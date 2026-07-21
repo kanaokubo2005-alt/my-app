@@ -17,7 +17,7 @@ import {
   CheckCircle2,
   X
 } from "lucide-react";
-import type { Task, PriorityType } from "../types";
+import type { Task, PriorityType, TrashItem } from "../types";
 
 interface TasksViewProps {
   tasks: Task[];
@@ -25,6 +25,7 @@ interface TasksViewProps {
   onToggleTask: (id: string) => void;
   onDeleteTask: (id: string) => void;
   onStartFocusSession: (task: Task) => void;
+  onAddToTrash?: (item: TrashItem) => void;
 }
 
 export default function TasksView({
@@ -32,7 +33,8 @@ export default function TasksView({
   onAddTask,
   onToggleTask,
   onDeleteTask,
-  onStartFocusSession
+  onStartFocusSession,
+  onAddToTrash
 }: TasksViewProps) {
   const [showCompletedModal, setShowCompletedModal] = useState(false);
   const [title, setTitle] = useState("");
@@ -241,7 +243,7 @@ export default function TasksView({
                   className="w-full bg-slate-50 border border-slate-100 rounded-xl px-3 py-2.5 text-xs md:text-sm focus:outline-hidden focus:ring-1 focus:ring-cobalt focus:bg-white text-slate-700 transition-all"
                 >
                   <option value="high">最重要 (赤)</option>
-                  <option value="medium">重要 (オレンジ)</option>
+                  <option value="medium">通常</option>
                 </select>
               </div>
             </div>
@@ -270,31 +272,38 @@ export default function TasksView({
         <div className="lg:col-span-2 space-y-4">
           {/* Controls Bar */}
           <div className="bg-white rounded-2xl border border-slate-100 p-4 shadow-xs flex flex-wrap items-center justify-between gap-3 text-xs md:text-sm">
-            <div className="flex flex-wrap items-center gap-3">
-              {/* Category Filter */}
-              <div className="flex items-center gap-1.5">
-                <Filter className="w-3.5 h-3.5 text-slate-400" />
-                <select
-                  value={filterCategory}
-                  onChange={(e) => setFilterCategory(e.target.value)}
-                  className="bg-slate-50 border border-slate-100 rounded-lg px-2.5 py-1.5 font-medium text-slate-600 focus:outline-hidden cursor-pointer"
-                >
-                  <option value="all">すべてのカテゴリー</option>
-                  {categories.map((cat) => (
-                    <option key={cat} value={cat}>{cat}</option>
-                  ))}
-                </select>
-              </div>
+            <div className="flex items-center gap-1.5">
+              <Filter className="w-3.5 h-3.5 text-slate-400" />
+              <select
+                value={filterCategory}
+                onChange={(e) => setFilterCategory(e.target.value)}
+                className="bg-slate-50 border border-slate-100 rounded-lg px-2.5 py-1.5 font-medium text-slate-600 focus:outline-hidden cursor-pointer"
+              >
+                <option value="all">すべてのカテゴリー</option>
+                {categories.map((cat) => (
+                  <option key={cat} value={cat}>{cat}</option>
+                ))}
+              </select>
             </div>
+
+            <button
+              onClick={() => setShowCompletedModal(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-xl font-bold hover:bg-emerald-100 transition-colors cursor-pointer text-xs"
+            >
+              <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+              <span>完了したタスクを表示 ({tasks.filter(t => t.completed).length}件)</span>
+            </button>
           </div>
 
           {/* List display */}
           <div className="space-y-3">
             {processedTasks.length === 0 ? (
-              <div className="bg-white rounded-2xl border border-slate-100 p-12 text-center text-slate-400">
-                <AlertCircle className="w-8 h-8 mx-auto text-slate-300 mb-2" />
-                <p className="font-semibold text-sm">タスクが見つかりませんでした。</p>
-                <p className="text-xs mt-1">条件を変更するか、左側のフォームからタスクを追加してください。</p>
+              <div className="bg-white rounded-2xl border border-slate-100 p-8 text-center space-y-2">
+                <div className="w-10 h-10 bg-slate-50 text-slate-400 rounded-full flex items-center justify-center mx-auto">
+                  <CheckCircle2 className="w-5 h-5" />
+                </div>
+                <p className="font-semibold text-slate-700 text-sm">該当するタスクはありません</p>
+                <p className="text-slate-400 text-xs">新しいタスクを追加してください</p>
               </div>
             ) : (
               processedTasks.map((task) => (
@@ -335,9 +344,11 @@ export default function TasksView({
                         <span className="bg-slate-200/60 px-1.5 py-0.5 rounded-md text-slate-500">
                           {task.category}
                         </span>
-                        <span className={`px-1.5 py-0.5 rounded-md text-[10px] ${getPriorityBadgeClass(task.priority)}`}>
-                          {task.priority === "high" ? "最重要" : "重要"}
-                        </span>
+                        {task.priority === "high" && (
+                          <span className="px-1.5 py-0.5 rounded-md text-[10px] bg-rose-50 text-rose-600 border border-rose-100 font-extrabold">
+                            最重要
+                          </span>
+                        )}
                         <span className="flex items-center gap-0.5">
                           <Calendar className="w-3 h-3 text-slate-300" />
                           締切: {task.deadline.replace("T", " ")}
@@ -349,7 +360,18 @@ export default function TasksView({
                   {/* Actions buttons */}
                   <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button
-                      onClick={() => onDeleteTask(task.id)}
+                      onClick={() => {
+                        if (onAddToTrash) {
+                          onAddToTrash({
+                            id: `trash-task-${Date.now()}`,
+                            type: "individual_task",
+                            title: task.title,
+                            deletedAt: new Date().toLocaleString("ja-JP"),
+                            originalData: task
+                          });
+                        }
+                        onDeleteTask(task.id);
+                      }}
                       title="削除"
                       className="p-2 text-slate-400 hover:text-rose-500 hover:bg-slate-50 rounded-lg transition-colors cursor-pointer"
                     >

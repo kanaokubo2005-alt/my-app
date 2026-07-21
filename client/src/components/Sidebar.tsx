@@ -6,7 +6,8 @@ import {
   Menu, 
   X,
   GraduationCap,
-  Users
+  Users,
+  Trash2
 } from "lucide-react";
 
 interface SidebarProps {
@@ -15,6 +16,8 @@ interface SidebarProps {
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
   user?: any;
+  onOpenTrash?: () => void;
+  trashCount?: number;
 }
 
 export default function Sidebar({
@@ -22,7 +25,9 @@ export default function Sidebar({
   setCurrentTab,
   isOpen,
   setIsOpen,
-  user
+  user,
+  onOpenTrash,
+  trashCount
 }: SidebarProps) {
   const displayName = user?.name || "ゲスト";
   const userEmail = user?.username ? `@${user.username}` : "未ログイン";
@@ -102,6 +107,24 @@ export default function Sidebar({
                 </button>
               );
             })}
+
+            <button
+              onClick={() => {
+                if (onOpenTrash) onOpenTrash();
+                setIsOpen(false);
+              }}
+              className="flex items-center justify-between gap-3 px-4 py-3 rounded-xl text-sm font-semibold text-slate-500 hover:bg-slate-50 hover:text-slate-800 transition-all cursor-pointer text-left"
+            >
+              <div className="flex items-center gap-3.5">
+                <Trash2 className="w-5 h-5 text-slate-400" />
+                <span>ゴミ箱・復元</span>
+              </div>
+              {trashCount && trashCount > 0 ? (
+                <span className="bg-rose-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+                  {trashCount}
+                </span>
+              ) : null}
+            </button>
           </nav>
         </div>
 

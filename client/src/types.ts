@@ -24,3 +24,11 @@ export interface AIRecommendation {
   reason: string;
   motivation: string;
 }
+
+export interface TrashItem {
+  id: string;
+  type: 'individual_task' | 'team_task' | 'folder' | 'note';
+  title: string;
+  deletedAt: string;
+  originalData: any;
+}

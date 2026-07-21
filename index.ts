@@ -569,10 +569,15 @@ app.post("/api/teams/:teamId/tasks", async (req, res) => {
 app.put("/api/teams/:teamId/tasks/:taskId", async (req, res) => {
   try {
     const taskId = parseInt(req.params.taskId, 10);
-    const { progress } = req.body;
+    const { title, assignedTo, folderName, priority, progress, description } = req.body;
 
     const data: any = {};
+    if (title !== undefined) data.title = title;
+    if (assignedTo !== undefined) data.assignedTo = assignedTo;
+    if (folderName !== undefined) data.folderName = folderName;
+    if (priority !== undefined) data.priority = priority;
     if (progress !== undefined) data.progress = progress;
+    if (description !== undefined) data.description = description;
 
     const task = await prisma.teamTask.update({
       where: { id: taskId },

@@ -26,8 +26,12 @@ import {
   UserCheck,
   PlusCircle,
   Clock,
-  Sparkles
+  Sparkles,
+  Info,
+  Edit2,
+  MoveRight
 } from "lucide-react";
+import type { TrashItem } from "../types";
 
 interface TeamMember {
   id: string;
@@ -65,8 +69,6 @@ interface TeamTask {
   priority: "low" | "medium" | "high" | "must";
   progress: number;
   description: string;
-  recurrence: "none" | "daily" | "biweekly" | "weekly-days" | "yearly";
-  recurrenceDays?: string[];
   attachments: { name: string; type: string; url?: string }[];
   links: { label: string; url: string }[];
 }
@@ -85,7 +87,11 @@ interface Team {
 const INITIAL_TEAMS: Team[] = [];
 const API_BASE = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1" ? "http://localhost:8888" : "";
 
-export default function TeamSpaceView() {
+interface TeamSpaceViewProps {
+  onAddToTrash?: (item: TrashItem) => void;
+}
+
+export default function TeamSpaceView({ onAddToTrash }: TeamSpaceViewProps) {
   const getAuthHeaders = (extra: Record<string, string> = {}) => {
     const token = localStorage.getItem("todone_user_token");
     return {
@@ -107,10 +113,7 @@ export default function TeamSpaceView() {
 
   const currentTeam = uniqueTeams.find(t => t.id === activeTeamId);
 
-  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
-  const activeTask = currentTeam?.tasks.find(t => t.id === selectedTaskId) || currentTeam?.tasks[0];
-
-  // Folders state per workspace
+  // Folders state per workspace - Default to EMPTY [] (No preset folders)
   const [customFoldersMap, setCustomFoldersMap] = useState<Record<string, string[]>>(() => {
     const saved = localStorage.getItem("todone_custom_folders");
     if (saved) {
@@ -119,15 +122,18 @@ export default function TeamSpaceView() {
     return {};
   });
 
-  const activeFolders = activeTeamId ? (customFoldersMap[activeTeamId] || ["ゼミ発表資料", "研究レポート群"]) : [];
+  const activeFolders = activeTeamId ? (customFoldersMap[activeTeamId] || []) : [];
 
   const [showAddFolderModal, setShowAddFolderModal] = useState(false);
   const [newFolderNameInput, setNewFolderNameInput] = useState("");
-  const [openFolders, setOpenFolders] = useState<Record<string, boolean>>({ "all": true });
+  const [openFolders, setOpenFolders] = useState<Record<string, boolean>>({});
+
+  // Task Details Modal State
+  const [selectedTaskModal, setSelectedTaskModal] = useState<TeamTask | null>(null);
 
   // Toggle folder accordion
   const toggleFolderOpen = (folderName: string) => {
-    setOpenFolders(prev => ({ ...prev, [folderName]: !prev[folderName] }));
+    setOpenFolders(prev => ({ ...prev, [folderName]: prev[folderName] === false }));
   };
 
   // Modals visibility
@@ -146,9 +152,6 @@ export default function TeamSpaceView() {
           setTeams(data);
           if (data.length > 0) {
             setActiveTeamId(data[0].id);
-            if (data[0].tasks.length > 0) {
-              setSelectedTaskId(data[0].tasks[0].id);
-            }
           }
         }
       })
@@ -158,6 +161,7 @@ export default function TeamSpaceView() {
   // Delete Workspace / Team
   const handleDeleteTeam = async (teamId: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
+    const teamToDelete = teams.find(t => t.id === teamId);
     if (!window.confirm("この共有スペース（ワークスペース）を削除しますか？\n所属メンバーや共有ファイル・タスクも削除されます。")) return;
 
     try {
@@ -166,6 +170,15 @@ export default function TeamSpaceView() {
         headers: getAuthHeaders()
       });
       if (res.ok) {
+        if (teamToDelete && onAddToTrash) {
+          onAddToTrash({
+            id: `trash-team-${Date.now()}`,
+            type: "team_task",
+            title: `[ワークスペース] ${teamToDelete.name}`,
+            deletedAt: new Date().toLocaleString("ja-JP"),
+            originalData: teamToDelete
+          });
+        }
         setTeams(prev => prev.filter(t => t.id !== teamId));
         if (activeTeamId === teamId) {
           setActiveTeamId(null);
@@ -224,7 +237,7 @@ export default function TeamSpaceView() {
     const val = newFolderNameInput.trim();
     if (!val || !activeTeamId) return;
 
-    const currentFolders = customFoldersMap[activeTeamId] || ["ゼミ発表資料", "研究レポート群"];
+    const currentFolders = customFoldersMap[activeTeamId] || [];
     if (!currentFolders.includes(val)) {
       const updated = [...currentFolders, val];
       const newMap = { ...customFoldersMap, [activeTeamId]: updated };
@@ -234,6 +247,114 @@ export default function TeamSpaceView() {
     }
     setNewFolderNameInput("");
     setShowAddFolderModal(false);
+  };
+
+  // Delete Folder (tasks inside move to unclassified without being lost)
+  const handleDeleteFolder = (folderName: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!activeTeamId) return;
+    if (window.confirm(`「${folderName}」フォルダを削除しますか？\n※フォルダ内のタスクは「未分類タスク」に移動し消去されません。`)) {
+      const currentFolders = customFoldersMap[activeTeamId] || [];
+      const updatedFolders = currentFolders.filter(f => f !== folderName);
+      const newMap = { ...customFoldersMap, [activeTeamId]: updatedFolders };
+      setCustomFoldersMap(newMap);
+      localStorage.setItem("todone_custom_folders", JSON.stringify(newMap));
+
+      // Move tasks in this folder to folderName = null
+      if (currentTeam) {
+        currentTeam.tasks.forEach(async (task) => {
+          if (task.folderName === folderName) {
+            try {
+              await fetch(`${API_BASE}/api/teams/${activeTeamId}/tasks/${task.id}`, {
+                method: "PUT",
+                headers: getAuthHeaders({ "Content-Type": "application/json" }),
+                body: JSON.stringify({ folderName: null })
+              });
+            } catch (err) {
+              console.error(err);
+            }
+          }
+        });
+
+        setTeams(prev => prev.map(t => {
+          if (t.id === activeTeamId) {
+            return {
+              ...t,
+              tasks: t.tasks.map(task => task.folderName === folderName ? { ...task, folderName: null } : task)
+            };
+          }
+          return t;
+        }));
+      }
+
+      if (onAddToTrash) {
+        onAddToTrash({
+          id: `trash-folder-${Date.now()}`,
+          type: "folder",
+          title: `[フォルダ] ${folderName}`,
+          deletedAt: new Date().toLocaleString("ja-JP"),
+          originalData: { folderName, teamId: activeTeamId }
+        });
+      }
+    }
+  };
+
+  // Move Task to Folder (Drag and Drop / Select)
+  const moveTaskToFolder = async (taskId: string, targetFolderName: string | null) => {
+    if (!activeTeamId) return;
+
+    setTeams(prev => prev.map(t => {
+      if (t.id === activeTeamId) {
+        return {
+          ...t,
+          tasks: t.tasks.map(task => task.id === taskId ? { ...task, folderName: targetFolderName } : task)
+        };
+      }
+      return t;
+    }));
+
+    if (selectedTaskModal && selectedTaskModal.id === taskId) {
+      setSelectedTaskModal(prev => prev ? { ...prev, folderName: targetFolderName } : null);
+    }
+
+    try {
+      await fetch(`${API_BASE}/api/teams/${activeTeamId}/tasks/${taskId}`, {
+        method: "PUT",
+        headers: getAuthHeaders({ "Content-Type": "application/json" }),
+        body: JSON.stringify({ folderName: targetFolderName })
+      });
+    } catch (err) {
+      console.error("Error moving task to folder:", err);
+    }
+  };
+
+  // Update Task Assignee
+  const updateTaskAssignee = async (taskId: string, newAssignee: string) => {
+    if (!activeTeamId) return;
+
+    setTeams(prev => prev.map(t => {
+      if (t.id === activeTeamId) {
+        return {
+          ...t,
+          tasks: t.tasks.map(task => task.id === taskId ? { ...task, assignedTo: newAssignee } : task)
+        };
+      }
+      return t;
+    }));
+
+    if (selectedTaskModal && selectedTaskModal.id === taskId) {
+      setSelectedTaskModal(prev => prev ? { ...prev, assignedTo: newAssignee } : null);
+    }
+
+    try {
+      await fetch(`${API_BASE}/api/teams/${activeTeamId}/tasks/${taskId}`, {
+        method: "PUT",
+        headers: getAuthHeaders({ "Content-Type": "application/json" }),
+        body: JSON.stringify({ assignedTo: newAssignee })
+      });
+    } catch (err) {
+      console.error("Error updating assignee:", err);
+    }
   };
 
   // New Note (Memo) Form States
@@ -322,44 +443,19 @@ export default function TeamSpaceView() {
   const [cmdTaskTitle, setCmdTaskTitle] = useState("");
   const [cmdFolderName, setCmdFolderName] = useState("");
   const [cmdAssignee, setCmdAssignee] = useState("");
-  const [cmdPriority, setCmdPriority] = useState<"low" | "medium" | "high" | "must">("medium");
+  const [cmdPriority, setCmdPriority] = useState<"medium" | "high">("medium");
 
   // Optional toggles
   const [showOptDesc, setShowOptDesc] = useState(false);
   const [showOptLink, setShowOptLink] = useState(false);
   const [showOptFile, setShowOptFile] = useState(false);
-  const [showOptRecurrence, setShowOptRecurrence] = useState(false);
 
   const [cmdDescription, setCmdDescription] = useState("");
   const [cmdLinkVal, setCmdLinkVal] = useState("");
   const [cmdLinkLabel, setCmdLinkLabel] = useState("");
   const [attachedFileName, setAttachedFileName] = useState("");
   const [attachedFileType, setAttachedFileType] = useState("pdf");
-  const [cmdRecurrence, setCmdRecurrence] = useState<"none" | "daily" | "biweekly" | "weekly-days" | "yearly">("none");
-  const [cmdRecurrenceDays, setCmdRecurrenceDays] = useState<string[]>([]);
-  const [dragActive, setDragActive] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const daysOfWeek = ["月", "火", "水", "木", "金", "土", "日"];
-
-  const handleDrag = (e: DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.type === "dragenter" || e.type === "dragover") { setDragActive(true); }
-    else if (e.type === "dragleave") { setDragActive(false); }
-  };
-
-  const handleDrop = (e: DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(false);
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      const file = e.dataTransfer.files[0];
-      setAttachedFileName(file.name);
-      const ext = file.name.split('.').pop()?.toLowerCase() || 'pdf';
-      setAttachedFileType(ext);
-    }
-  };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -367,14 +463,6 @@ export default function TeamSpaceView() {
       setAttachedFileName(file.name);
       const ext = file.name.split('.').pop()?.toLowerCase() || 'pdf';
       setAttachedFileType(ext);
-    }
-  };
-
-  const toggleDaySelection = (day: string) => {
-    if (cmdRecurrenceDays.includes(day)) {
-      setCmdRecurrenceDays(prev => prev.filter(d => d !== day));
-    } else {
-      setCmdRecurrenceDays(prev => [...prev, day]);
     }
   };
 
@@ -388,8 +476,7 @@ export default function TeamSpaceView() {
       folderName: cmdFolderName || null,
       priority: cmdPriority,
       description: cmdDescription.trim(),
-      recurrence: cmdRecurrence,
-      recurrenceDays: cmdRecurrenceDays,
+      recurrence: "none",
       attachments: attachedFileName ? [{
         name: attachedFileName,
         type: attachedFileType,
@@ -426,8 +513,6 @@ export default function TeamSpaceView() {
           return t;
         }));
 
-        setSelectedTaskId(data.task.id);
-
         // Clear Form
         setCmdTaskTitle("");
         setCmdFolderName("");
@@ -438,7 +523,6 @@ export default function TeamSpaceView() {
         setShowOptDesc(false);
         setShowOptLink(false);
         setShowOptFile(false);
-        setShowOptRecurrence(false);
       }
     } catch (err) {
       console.error("Error creating team task:", err);
@@ -475,7 +559,9 @@ export default function TeamSpaceView() {
   const handleDeleteTask = async (taskId: string, e: React.MouseEvent) => {
     e.stopPropagation();
     if (!activeTeamId) return;
-    if (window.confirm("この共有タスクを削除しますか？")) {
+    const taskToDelete = currentTeam?.tasks.find(t => t.id === taskId);
+
+    if (window.confirm("この共有タスクを削除しますか？\n（ゴミ箱へ移動し復元できます）")) {
       try {
         const res = await fetch(`${API_BASE}/api/teams/${activeTeamId}/tasks/${taskId}`, {
           method: "DELETE",
@@ -483,6 +569,16 @@ export default function TeamSpaceView() {
         });
 
         if (res.ok) {
+          if (taskToDelete && onAddToTrash) {
+            onAddToTrash({
+              id: `trash-team-task-${Date.now()}`,
+              type: "team_task",
+              title: taskToDelete.title,
+              deletedAt: new Date().toLocaleString("ja-JP"),
+              originalData: { ...taskToDelete, teamId: activeTeamId }
+            });
+          }
+
           setTeams(prev => prev.map(t => {
             if (t.id === activeTeamId) {
               return {
@@ -492,6 +588,10 @@ export default function TeamSpaceView() {
             }
             return t;
           }));
+
+          if (selectedTaskModal?.id === taskId) {
+            setSelectedTaskModal(null);
+          }
         }
       } catch (err) {
         console.error("Error deleting team task:", err);
@@ -515,15 +615,10 @@ export default function TeamSpaceView() {
     }
   };
 
-  const getPriorityBadge = (p: string) => {
-    switch (p) {
-      case "must":
-      case "high":
-        return { text: "最重要", bg: "bg-rose-50 text-rose-600 border-rose-100 font-extrabold" };
-      case "medium":
-      default:
-        return { text: "重要", bg: "bg-amber-50 text-amber-600 border-amber-100 font-bold" };
-    }
+  // Deduplicate Members (remove duplicate "kana" if "大久保 佳奈" exists)
+  const getUniqueMembers = (members: TeamMember[]) => {
+    const hasKanaKanji = members.some(m => m.name === "大久保 佳奈");
+    return members.filter(m => !(hasKanaKanji && (m.name.toLowerCase() === "kana" || m.name.toLowerCase() === "kanaokubo")));
   };
 
   // RENDER TEAMS LIST VIEW (Initial View)
@@ -562,9 +657,6 @@ export default function TeamSpaceView() {
                 key={team.id}
                 onClick={() => {
                   setActiveTeamId(team.id);
-                  if (team.tasks.length > 0) {
-                    setSelectedTaskId(team.tasks[0].id);
-                  }
                 }}
                 className="bg-white rounded-2xl border border-slate-100 hover:border-cobalt/35 p-6 shadow-xs hover:shadow-md transition-all flex flex-col justify-between space-y-4 group cursor-pointer"
               >
@@ -601,7 +693,7 @@ export default function TeamSpaceView() {
                 <div className="bg-slate-50/50 border border-slate-100 rounded-xl p-3 flex justify-between items-center text-xs">
                   <div className="flex items-center gap-1 text-slate-500">
                     <Users className="w-4 h-4 text-slate-400" />
-                    <span>メンバー: <strong className="text-slate-700">{team.members.length}人</strong></span>
+                    <span>メンバー: <strong className="text-slate-700">{getUniqueMembers(team.members).length}人</strong></span>
                   </div>
                   <div className="flex items-center gap-1 text-slate-500">
                     <FileText className="w-4 h-4 text-slate-400" />
@@ -615,7 +707,7 @@ export default function TeamSpaceView() {
 
                 <div className="flex items-center justify-between pt-2">
                   <div className="flex -space-x-2">
-                    {team.members.slice(0, 3).map((m) => (
+                    {getUniqueMembers(team.members).slice(0, 3).map((m) => (
                       <div 
                         key={m.id}
                         className={`w-7 h-7 rounded-full text-[10px] text-white flex items-center justify-center font-bold border-2 border-white shadow-2xs ${m.avatarColor}`}
@@ -624,9 +716,9 @@ export default function TeamSpaceView() {
                         {m.name.slice(0, 1)}
                       </div>
                     ))}
-                    {team.members.length > 3 && (
+                    {getUniqueMembers(team.members).length > 3 && (
                       <div className="w-7 h-7 rounded-full bg-slate-200 text-slate-600 text-[9px] flex items-center justify-center font-bold border-2 border-white">
-                        +{team.members.length - 3}
+                        +{getUniqueMembers(team.members).length - 3}
                       </div>
                     )}
                   </div>
@@ -719,13 +811,13 @@ export default function TeamSpaceView() {
     );
   }
 
-  // Tasks grouped by folder
+  const teamMembers = getUniqueMembers(currentTeam.members);
   const standaloneTasks = currentTeam.tasks.filter(t => !t.folderName);
-  
+
   return (
     <div className="flex-1 overflow-y-auto bg-slate-bg p-4 md:p-8 space-y-6 md:space-y-8 animate-fade-in text-slate-700 font-sans">
       
-      {/* Top Navigation & Header Header */}
+      {/* Top Navigation & Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 pb-5">
         <div className="space-y-1.5">
           <button 
@@ -752,7 +844,7 @@ export default function TeamSpaceView() {
           {/* Edge Members Avatars */}
           <div className="flex items-center gap-2 bg-white border border-slate-200 px-3 py-1.5 rounded-xl shadow-2xs">
             <div className="flex -space-x-1.5">
-              {currentTeam.members.map((m) => (
+              {teamMembers.map((m) => (
                 <div 
                   key={m.id}
                   className={`w-6 h-6 rounded-full text-[9px] text-white flex items-center justify-center font-bold border-2 border-white shadow-2xs ${m.avatarColor}`}
@@ -762,7 +854,7 @@ export default function TeamSpaceView() {
                 </div>
               ))}
             </div>
-            <span className="text-xs font-bold text-slate-600">{currentTeam.members.length}名</span>
+            <span className="text-xs font-bold text-slate-600">{teamMembers.length}名</span>
             <button
               onClick={() => setShowAddMember(true)}
               className="ml-1 text-[10px] text-cobalt hover:underline font-bold cursor-pointer"
@@ -796,7 +888,7 @@ export default function TeamSpaceView() {
                 <Folder className="w-5 h-5 text-cobalt" />
                 <div>
                   <h3 className="font-sans font-extrabold text-slate-800 text-sm md:text-base">ファイル・フォルダ & 共有タスク</h3>
-                  <p className="text-slate-400 text-[10px] font-semibold mt-0.5">タスクはフォルダごとに整理、または直接作成が可能です</p>
+                  <p className="text-slate-400 text-[10px] font-semibold mt-0.5">タスクはドラッグ＆ドロップでフォルダに格納できます</p>
                 </div>
               </div>
 
@@ -810,7 +902,7 @@ export default function TeamSpaceView() {
               </button>
             </div>
 
-            {/* Folder Cards & Accordions */}
+            {/* Folder Cards & Accordions with Drag and Drop Support */}
             {activeFolders.length > 0 && (
               <div className="space-y-3">
                 <h4 className="text-xs font-bold text-slate-500">📁 フォルダで分類されたタスク</h4>
@@ -819,7 +911,18 @@ export default function TeamSpaceView() {
                   const isOpen = openFolders[folderName] !== false;
 
                   return (
-                    <div key={folderName} className="border border-slate-200/80 rounded-xl bg-slate-50/40 overflow-hidden">
+                    <div 
+                      key={folderName} 
+                      onDragOver={(e) => e.preventDefault()}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        const taskId = e.dataTransfer.getData("taskId");
+                        if (taskId) {
+                          moveTaskToFolder(taskId, folderName);
+                        }
+                      }}
+                      className="border border-slate-200/80 rounded-xl bg-slate-50/40 overflow-hidden group transition-all"
+                    >
                       {/* Folder Title Bar */}
                       <div 
                         onClick={() => toggleFolderOpen(folderName)}
@@ -833,22 +936,35 @@ export default function TeamSpaceView() {
                             {folderTasks.length}件のタスク
                           </span>
                         </div>
+
+                        {/* Folder Delete Button */}
+                        <button
+                          onClick={(e) => handleDeleteFolder(folderName, e)}
+                          title="フォルダを削除（タスクは未分類に保存されます）"
+                          className="p-1 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
                       </div>
 
                       {/* Folder Content Tasks */}
                       {isOpen && (
                         <div className="p-3 space-y-2">
                           {folderTasks.length === 0 ? (
-                            <p className="text-[11px] text-slate-400 italic py-2 text-center">このフォルダにタスクはまだ入っていません。</p>
+                            <p className="text-[11px] text-slate-400 italic py-2 text-center border-2 border-dashed border-slate-200/60 rounded-lg">
+                              ここにタスクをドラッグ＆ドロップして格納できます
+                            </p>
                           ) : (
                             folderTasks.map((task) => {
-                              const pBadge = getPriorityBadge(task.priority);
+                              const isMust = task.priority === "must" || task.priority === "high";
                               return (
                                 <div 
                                   key={task.id}
-                                  onClick={() => setSelectedTaskId(task.id)}
-                                  className={`p-3 rounded-xl border bg-white transition-all cursor-pointer text-xs flex items-center justify-between gap-3 ${
-                                    selectedTaskId === task.id ? "border-cobalt ring-1 ring-cobalt/20 shadow-xs" : "border-slate-100 hover:border-slate-200"
+                                  draggable
+                                  onDragStart={(e) => e.dataTransfer.setData("taskId", task.id)}
+                                  onClick={() => setSelectedTaskModal(task)}
+                                  className={`p-3 rounded-xl border bg-white transition-all cursor-grab active:cursor-grabbing text-xs flex items-center justify-between gap-3 ${
+                                    selectedTaskModal?.id === task.id ? "border-cobalt ring-1 ring-cobalt/20 shadow-xs" : "border-slate-100 hover:border-slate-200"
                                   }`}
                                 >
                                   <div className="flex items-center gap-2.5 min-w-0">
@@ -869,13 +985,16 @@ export default function TeamSpaceView() {
                                   </div>
 
                                   <div className="flex items-center gap-2 shrink-0">
-                                    <span className={`text-[9px] px-1.5 py-0.5 rounded ${pBadge.bg}`}>
-                                      {pBadge.text}
-                                    </span>
+                                    {isMust && (
+                                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-rose-50 text-rose-600 border border-rose-100 font-extrabold">
+                                        最重要
+                                      </span>
+                                    )}
                                     <span className="text-[10px] text-slate-400 font-medium">👤 {task.assignedTo}</span>
                                     <button
                                       onClick={(e) => handleDeleteTask(task.id, e)}
                                       className="text-slate-300 hover:text-rose-500 p-1 rounded transition-colors cursor-pointer"
+                                      title="削除"
                                     >
                                       <Trash2 className="w-3.5 h-3.5" />
                                     </button>
@@ -892,23 +1011,35 @@ export default function TeamSpaceView() {
               </div>
             )}
 
-            {/* Standalone Tasks (Direct creation without folder) */}
-            <div className="space-y-3 pt-2">
-              <h4 className="text-xs font-bold text-slate-500">📄 直接作成されたタスク（ファイル未分類）</h4>
+            {/* Standalone Unclassified Tasks */}
+            <div 
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={(e) => {
+                e.preventDefault();
+                const taskId = e.dataTransfer.getData("taskId");
+                if (taskId) {
+                  moveTaskToFolder(taskId, null);
+                }
+              }}
+              className="space-y-3 pt-2"
+            >
+              <h4 className="text-xs font-bold text-slate-500">📄 未分類タスク</h4>
               <div className="space-y-2">
                 {standaloneTasks.length === 0 ? (
                   <div className="p-4 text-center border border-dashed border-slate-200 rounded-xl">
-                    <p className="text-xs text-slate-400 italic">ファイル未分類の直接タスクはありません。</p>
+                    <p className="text-xs text-slate-400 italic">未分類タスクはありません。</p>
                   </div>
                 ) : (
                   standaloneTasks.map((task) => {
-                    const pBadge = getPriorityBadge(task.priority);
+                    const isMust = task.priority === "must" || task.priority === "high";
                     return (
                       <div 
                         key={task.id}
-                        onClick={() => setSelectedTaskId(task.id)}
-                        className={`p-3.5 rounded-xl border bg-white transition-all cursor-pointer text-xs flex items-center justify-between gap-3 ${
-                          selectedTaskId === task.id ? "border-cobalt ring-1 ring-cobalt/20 shadow-xs" : "border-slate-100 hover:border-slate-200"
+                        draggable
+                        onDragStart={(e) => e.dataTransfer.setData("taskId", task.id)}
+                        onClick={() => setSelectedTaskModal(task)}
+                        className={`p-3.5 rounded-xl border bg-white transition-all cursor-grab active:cursor-grabbing text-xs flex items-center justify-between gap-3 ${
+                          selectedTaskModal?.id === task.id ? "border-cobalt ring-1 ring-cobalt/20 shadow-xs" : "border-slate-100 hover:border-slate-200"
                         }`}
                       >
                         <div className="flex items-center gap-2.5 min-w-0">
@@ -929,13 +1060,16 @@ export default function TeamSpaceView() {
                         </div>
 
                         <div className="flex items-center gap-2 shrink-0">
-                          <span className={`text-[9px] px-1.5 py-0.5 rounded ${pBadge.bg}`}>
-                            {pBadge.text}
-                          </span>
+                          {isMust && (
+                            <span className="text-[9px] px-1.5 py-0.5 rounded bg-rose-50 text-rose-600 border border-rose-100 font-extrabold">
+                              最重要
+                            </span>
+                          )}
                           <span className="text-[10px] text-slate-400 font-medium">👤 {task.assignedTo}</span>
                           <button
                             onClick={(e) => handleDeleteTask(task.id, e)}
                             className="text-slate-300 hover:text-rose-500 p-1 rounded transition-colors cursor-pointer"
+                            title="削除"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
@@ -1049,7 +1183,7 @@ export default function TeamSpaceView() {
                     onChange={(e) => setCmdFolderName(e.target.value)}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-2 font-bold text-slate-700 focus:outline-hidden cursor-pointer text-xs"
                   >
-                    <option value="">なし（ファイルに入れず作成）</option>
+                    <option value="">なし（未分類タスク）</option>
                     {activeFolders.map(f => (
                       <option key={f} value={f}>📁 {f}</option>
                     ))}
@@ -1064,7 +1198,7 @@ export default function TeamSpaceView() {
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-2 font-bold text-slate-700 focus:outline-hidden cursor-pointer text-xs"
                   >
                     <option value="大久保 佳奈">大久保 佳奈 (You)</option>
-                    {currentTeam.members.filter(m => m.name !== "大久保 佳奈").map(m => (
+                    {teamMembers.filter(m => m.name !== "大久保 佳奈").map(m => (
                       <option key={m.id} value={m.name}>{m.name}</option>
                     ))}
                   </select>
@@ -1080,7 +1214,7 @@ export default function TeamSpaceView() {
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-2 font-bold text-slate-700 focus:outline-hidden cursor-pointer text-xs"
                 >
                   <option value="high">最重要 (赤)</option>
-                  <option value="medium">重要 (オレンジ)</option>
+                  <option value="medium">通常</option>
                 </select>
               </div>
 
@@ -1120,17 +1254,6 @@ export default function TeamSpaceView() {
                   >
                     <Paperclip className="w-3.5 h-3.5" />
                     <span>ファイル添付</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setShowOptRecurrence(!showOptRecurrence)}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                      showOptRecurrence ? "bg-cobalt text-white" : "bg-slate-100 hover:bg-slate-200 text-slate-600"
-                    }`}
-                  >
-                    <Clock className="w-3.5 h-3.5" />
-                    <span>繰り返し</span>
                   </button>
                 </div>
               </div>
@@ -1194,23 +1317,6 @@ export default function TeamSpaceView() {
                 </div>
               )}
 
-              {/* Optional Section 4: Recurrence Rules */}
-              {showOptRecurrence && (
-                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2 animate-fade-in">
-                  <label className="block text-[10px] text-slate-500 font-bold">🔄 繰り返しルール</label>
-                  <select
-                    value={cmdRecurrence}
-                    onChange={(e) => setCmdRecurrence(e.target.value as any)}
-                    className="w-full bg-white border border-slate-200 rounded-lg p-1.5 text-xs font-bold text-slate-700"
-                  >
-                    <option value="none">繰り返しなし (単発)</option>
-                    <option value="daily">毎日繰り返し</option>
-                    <option value="biweekly">2週間ごと (隔週)</option>
-                    <option value="weekly-days">指定曜日のみ</option>
-                  </select>
-                </div>
-              )}
-
               {/* Submit Button */}
               <button
                 type="submit"
@@ -1225,6 +1331,84 @@ export default function TeamSpaceView() {
         </div>
 
       </div>
+
+      {/* MODAL: TASK DETAILS & EDITING DIALOG */}
+      {selectedTaskModal && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl border border-slate-100 p-6 w-full max-w-lg shadow-xl space-y-5 animate-fade-in text-xs md:text-sm">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <Info className="w-5 h-5 text-cobalt" />
+                <h3 className="font-sans font-bold text-slate-800 text-base">タスクの詳細と変更</h3>
+              </div>
+              <button onClick={() => setSelectedTaskModal(null)} className="text-slate-400 hover:text-slate-600 font-bold">✕</button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-slate-400 font-bold text-[10px] uppercase mb-1">タスク名</label>
+                <span className="font-extrabold text-base text-slate-800 block">{selectedTaskModal.title}</span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 bg-slate-50 p-3.5 rounded-xl border border-slate-150">
+                <div>
+                  <label className="block text-slate-500 font-bold mb-1 text-xs">👤 担当メンバーの変更</label>
+                  <select
+                    value={selectedTaskModal.assignedTo}
+                    onChange={(e) => updateTaskAssignee(selectedTaskModal.id, e.target.value)}
+                    className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 font-bold text-slate-700 text-xs cursor-pointer"
+                  >
+                    <option value="大久保 佳奈">大久保 佳奈 (You)</option>
+                    {teamMembers.filter(m => m.name !== "大久保 佳奈").map(m => (
+                      <option key={m.id} value={m.name}>{m.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-slate-500 font-bold mb-1 text-xs">📁 収納フォルダの変更</label>
+                  <select
+                    value={selectedTaskModal.folderName || ""}
+                    onChange={(e) => moveTaskToFolder(selectedTaskModal.id, e.target.value || null)}
+                    className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 font-bold text-slate-700 text-xs cursor-pointer"
+                  >
+                    <option value="">未分類タスク</option>
+                    {activeFolders.map(f => (
+                      <option key={f} value={f}>📁 {f}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {selectedTaskModal.description && (
+                <div>
+                  <label className="block text-slate-400 font-bold text-[10px] uppercase mb-1">メモ・詳細説明</label>
+                  <p className="p-3 bg-slate-50 border border-slate-150 rounded-xl text-slate-700 text-xs leading-relaxed font-medium">
+                    {selectedTaskModal.description}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-between items-center pt-3 border-t border-slate-100">
+              <button
+                onClick={(e) => {
+                  handleDeleteTask(selectedTaskModal.id, e);
+                }}
+                className="text-rose-500 hover:bg-rose-50 border border-rose-100 px-3 py-1.5 rounded-xl font-bold text-xs cursor-pointer"
+              >
+                タスクを削除
+              </button>
+              <button 
+                onClick={() => setSelectedTaskModal(null)}
+                className="bg-slate-800 hover:bg-slate-900 text-white font-bold px-5 py-2 rounded-xl text-xs cursor-pointer"
+              >
+                閉じる
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* MODAL: ADD MEMBER DIALOG */}
       {showAddMember && (

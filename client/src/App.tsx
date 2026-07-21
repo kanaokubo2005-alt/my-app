@@ -7,13 +7,16 @@ import {
   Lock,
   Laptop,
   Sparkles,
+  Trash2,
+  RotateCcw,
+  X
 } from "lucide-react";
 import Sidebar from "./components/Sidebar";
 import Dashboard from "./components/Dashboard";
 import TasksView from "./components/TasksView";
 import TeamSpaceView from "./components/TeamSpaceView";
 import FocusSession from "./components/FocusSession";
-import type { Task } from "./types";
+import type { Task, TrashItem } from "./types";
 
 const INITIAL_TASKS: Task[] = [];
 const API_BASE = "";
@@ -34,6 +37,92 @@ export default function App() {
   const [currentTab, setCurrentTab] = useState<string>("dashboard");
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>("");
+
+  // Trash Box & Restorations State
+  const [trashItems, setTrashItems] = useState<TrashItem[]>(() => {
+    const saved = localStorage.getItem("todone_trash_items");
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) { console.error(e); }
+    }
+    return [];
+  });
+  const [showTrashModal, setShowTrashModal] = useState<boolean>(false);
+
+  const handleAddToTrash = (item: TrashItem) => {
+    const updated = [item, ...trashItems];
+    setTrashItems(updated);
+    localStorage.setItem("todone_trash_items", JSON.stringify(updated));
+  };
+
+  const handleRestoreTrashItem = async (trashItem: TrashItem) => {
+    if (trashItem.type === "individual_task") {
+      try {
+        const token = localStorage.getItem("todone_user_token");
+        const res = await fetch(`${API_BASE}/api/tasks`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            title: trashItem.originalData.title,
+            deadline: trashItem.originalData.deadline || new Date().toISOString().split("T")[0],
+            priority: trashItem.originalData.priority || "medium",
+            category: trashItem.originalData.category || "大学",
+            duration: trashItem.originalData.duration || 30,
+            description: trashItem.originalData.description || ""
+          })
+        });
+        if (res.ok) {
+          const restoredTask = await res.json();
+          setTasks(prev => [restoredTask, ...prev]);
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    } else if (trashItem.type === "team_task" && trashItem.originalData.teamId) {
+      try {
+        const token = localStorage.getItem("todone_user_token");
+        await fetch(`${API_BASE}/api/teams/${trashItem.originalData.teamId}/tasks`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify(trashItem.originalData)
+        });
+      } catch (err) {
+        console.error(err);
+      }
+    } else if (trashItem.type === "folder" && trashItem.originalData.teamId) {
+      const saved = localStorage.getItem("todone_custom_folders");
+      let map: Record<string, string[]> = {};
+      if (saved) { try { map = JSON.parse(saved); } catch (e) { console.error(e); } }
+      const current = map[trashItem.originalData.teamId] || [];
+      if (!current.includes(trashItem.originalData.folderName)) {
+        map[trashItem.originalData.teamId] = [...current, trashItem.originalData.folderName];
+        localStorage.setItem("todone_custom_folders", JSON.stringify(map));
+      }
+    }
+
+    const updated = trashItems.filter(t => t.id !== trashItem.id);
+    setTrashItems(updated);
+    localStorage.setItem("todone_trash_items", JSON.stringify(updated));
+    alert(`「${trashItem.title}」を正常に復元しました。`);
+  };
+
+  const handlePermanentDelete = (id: string) => {
+    const updated = trashItems.filter(t => t.id !== id);
+    setTrashItems(updated);
+    localStorage.setItem("todone_trash_items", JSON.stringify(updated));
+  };
+
+  const handleClearTrash = () => {
+    if (window.confirm("ゴミ箱内のすべての項目を完全に削除しますか？")) {
+      setTrashItems([]);
+      localStorage.removeItem("todone_trash_items");
+    }
+  };
 
   // Modals state
   const [activeFocusTask, setActiveFocusTask] = useState<Task | null>(null);
@@ -271,10 +360,11 @@ export default function App() {
             onToggleTask={handleToggleTask}
             onDeleteTask={handleDeleteTask}
             onStartFocusSession={(task) => setActiveFocusTask(task)}
+            onAddToTrash={handleAddToTrash}
           />
         );
       case "team":
-        return <TeamSpaceView />;
+        return <TeamSpaceView onAddToTrash={handleAddToTrash} />;
       default:
         return <div>Tab not found</div>;
     }
@@ -424,6 +514,8 @@ export default function App() {
         isOpen={sidebarOpen}
         setIsOpen={setSidebarOpen}
         user={user}
+        onOpenTrash={() => setShowTrashModal(true)}
+        trashCount={trashItems.length}
       />
 
       {/* Central Screen Area */}
@@ -438,6 +530,74 @@ export default function App() {
           onClose={() => setActiveFocusTask(null)}
           onCompleteTask={handleToggleTask}
         />
+      )}
+
+      {/* Trash Box / Restoration Modal Overlay */}
+      {showTrashModal && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl border border-slate-100 p-6 w-full max-w-lg shadow-xl space-y-4 animate-fade-in text-xs md:text-sm max-h-[85vh] flex flex-col">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3 shrink-0">
+              <div className="flex items-center gap-2">
+                <Trash2 className="w-5 h-5 text-rose-500" />
+                <h3 className="font-sans font-bold text-slate-800 text-base">ゴミ箱・削除データの復元 ({trashItems.length}件)</h3>
+              </div>
+              <button onClick={() => setShowTrashModal(false)} className="text-slate-400 font-bold hover:text-slate-600 cursor-pointer">✕</button>
+            </div>
+
+            <div className="space-y-2 overflow-y-auto flex-1 p-1">
+              {trashItems.length === 0 ? (
+                <div className="py-8 text-center text-slate-400 space-y-1">
+                  <Trash2 className="w-8 h-8 mx-auto text-slate-200" />
+                  <p className="font-semibold text-xs">ゴミ箱は空です</p>
+                  <p className="text-[10px]">削除されたタスクやフォルダがここに保管されます</p>
+                </div>
+              ) : (
+                trashItems.map((item) => (
+                  <div key={item.id} className="p-3 bg-slate-50 border border-slate-200/80 rounded-xl flex items-center justify-between gap-3 text-xs">
+                    <div className="min-w-0">
+                      <span className="font-bold text-slate-800 block truncate">{item.title}</span>
+                      <span className="text-[9px] text-slate-400">削除日時: {item.deletedAt}</span>
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        onClick={() => handleRestoreTrashItem(item)}
+                        className="bg-cobalt hover:bg-cobalt/95 text-white font-bold px-3 py-1 rounded-lg text-xs flex items-center gap-1 shadow-xs cursor-pointer"
+                      >
+                        <RotateCcw className="w-3.5 h-3.5" />
+                        <span>復元</span>
+                      </button>
+                      <button
+                        onClick={() => handlePermanentDelete(item.id)}
+                        className="text-slate-400 hover:text-rose-500 p-1 rounded transition-colors cursor-pointer"
+                        title="完全に削除"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {trashItems.length > 0 && (
+              <div className="flex justify-between items-center pt-3 border-t border-slate-100 shrink-0">
+                <button
+                  onClick={handleClearTrash}
+                  className="text-rose-500 hover:underline text-xs font-bold cursor-pointer"
+                >
+                  ゴミ箱を空にする
+                </button>
+                <button
+                  onClick={() => setShowTrashModal(false)}
+                  className="bg-slate-800 text-white font-bold px-4 py-1.5 rounded-xl text-xs cursor-pointer"
+                >
+                  閉じる
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
       )}
 
     </div>
