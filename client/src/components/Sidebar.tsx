@@ -47,16 +47,16 @@ export default function Sidebar({
       no: "1", 
       label: "個人タスク", 
       icon: CheckSquare, 
-      activeTabClass: "bg-[#244053] text-white shadow-md border-l-4 border-[#C24D38]",
-      inactiveTabClass: "bg-[#EAE6DF] text-[#4A5D6B] hover:bg-[#DFD9CE] border-l-2 border-slate-300"
+      activeTabClass: "bg-[#244053] text-white shadow-sm border-l-4 border-[#C24D38]",
+      inactiveTabClass: "bg-[#F3F0E8] text-[#4A5D6B] hover:bg-[#EBE7DF] border-l-2 border-[#D5CFB9]"
     },
     { 
       id: "team", 
       no: "2", 
       label: "チームスペース", 
       icon: Users, 
-      activeTabClass: "bg-[#345B73] text-white shadow-md border-l-4 border-[#C49A45]",
-      inactiveTabClass: "bg-[#EAE6DF] text-[#4A5D6B] hover:bg-[#DFD9CE] border-l-2 border-slate-300"
+      activeTabClass: "bg-[#345B73] text-white shadow-sm border-l-4 border-[#C49A45]",
+      inactiveTabClass: "bg-[#F3F0E8] text-[#4A5D6B] hover:bg-[#EBE7DF] border-l-2 border-[#D5CFB9]"
     },
   ];
 
@@ -70,21 +70,21 @@ export default function Sidebar({
         />
       )}
 
-      {/* Sidebar container */}
+      {/* Sidebar container with sharper corners and lightened notebook background */}
       <aside 
-        className={`fixed inset-y-0 left-0 w-64 bg-[#EBE7DF] border-r border-[#D5CFB9] flex flex-col justify-between p-5 z-50 transition-transform duration-300 ease-out lg:static lg:translate-x-0 bg-notebook-pattern ${
+        className={`fixed inset-y-0 left-0 w-64 bg-[#F8F6F1] border-r border-[#E0DACB] flex flex-col justify-between p-5 z-50 transition-transform duration-300 ease-out lg:static lg:translate-x-0 bg-notebook-pattern ${
           isOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
         <div className="flex flex-col gap-6">
           {/* Header & Brand Logo */}
-          <div className="flex items-center justify-between border-b border-[#D8D2BE] pb-4">
+          <div className="flex items-center justify-between border-b border-[#E0DACB] pb-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-[#244053] flex items-center justify-center text-white shadow-md">
-                <GraduationCap className="w-6 h-6" />
+              <div className="w-9 h-9 rounded-lg bg-[#244053] flex items-center justify-center text-white shadow-xs">
+                <GraduationCap className="w-5 h-5" />
               </div>
               <div>
-                <span className="font-brand-serif font-black text-xl tracking-tight text-[#22303C]">ToDone</span>
+                <span className="font-sans font-extrabold text-lg tracking-tight text-[#22303C]">ToDone</span>
                 <span className="block text-[9px] text-[#345B73] font-bold tracking-widest uppercase">Personal Planner</span>
               </div>
             </div>
@@ -98,8 +98,8 @@ export default function Sidebar({
             </button>
           </div>
 
-          {/* Navigation Menu (Clear File Binder Index Tabs) */}
-          <nav className="flex flex-col gap-3">
+          {/* Navigation Menu (Binder Index Tabs) */}
+          <nav className="flex flex-col gap-2.5">
             {menuItems.map((item) => {
               const isActive = currentTab === item.id;
               return (
@@ -109,16 +109,12 @@ export default function Sidebar({
                     setCurrentTab(item.id);
                     setIsOpen(false);
                   }}
-                  className={`flex items-center justify-between px-4 py-3.5 rounded-l-2xl rounded-r-md transition-all duration-200 text-left relative overflow-hidden group cursor-pointer ${
+                  className={`flex items-center justify-between px-4 py-3 rounded-l-xl rounded-r-xs transition-all duration-200 text-left relative overflow-hidden group cursor-pointer ${
                     isActive ? item.activeTabClass : item.inactiveTabClass
                   }`}
                 >
                   <div className="flex items-center gap-3">
-                    <div className="flex flex-col items-center justify-center">
-                      <span className="text-[8px] font-bold tracking-widest uppercase opacity-75">NO.</span>
-                      <span className="font-brand-serif font-black text-base leading-none">{item.no}</span>
-                    </div>
-                    <span className="font-bold text-sm tracking-wide">{item.label}</span>
+                    <span className="font-sans font-bold text-sm tracking-wide text-current">{item.label}</span>
                   </div>
                 </button>
               );
@@ -129,7 +125,7 @@ export default function Sidebar({
                 if (onOpenTrash) onOpenTrash();
                 setIsOpen(false);
               }}
-              className="flex items-center justify-between gap-3 px-4 py-3 rounded-xl text-xs font-bold text-[#4A5D6B] hover:bg-white hover:text-slate-800 border border-[#D5CFB9] transition-all cursor-pointer text-left mt-3 bg-[#F4F1EA]"
+              className="flex items-center justify-between gap-3 px-4 py-2.5 rounded-lg text-xs font-bold text-[#4A5D6B] hover:bg-[#F0EDE4] border border-[#E0DACB] transition-all cursor-pointer text-left mt-2 bg-[#FAF8F5]"
             >
               <div className="flex items-center gap-2.5">
                 <Trash2 className="w-4 h-4 text-[#5F7A6E]" />
@@ -149,16 +145,16 @@ export default function Sidebar({
           onClick={() => {
             if (onOpenProfile) onOpenProfile();
           }}
-          className="pt-3 border-t border-[#D5CFB9] flex items-center justify-between p-2 rounded-xl hover:bg-white/60 transition-all cursor-pointer text-left w-full group"
+          className="pt-3 border-t border-[#E0DACB] flex items-center justify-between p-2 rounded-lg hover:bg-[#FAF8F5] transition-all cursor-pointer text-left w-full group"
           title="自分のアカウント情報を表示"
         >
           <div className="flex items-center gap-3">
-            <div className="relative w-10 h-10 rounded-full bg-[#244053] text-white flex items-center justify-center font-bold text-sm shadow-xs group-hover:scale-105 transition-transform">
+            <div className="relative w-9 h-9 rounded-full bg-[#244053] text-white flex items-center justify-center font-bold text-xs shadow-xs group-hover:scale-105 transition-transform">
               {initials}
               <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 border-2 border-white rounded-full"></div>
             </div>
             <div className="min-w-0">
-              <span className="font-bold text-xs md:text-sm text-[#22303C] block truncate max-w-[120px]">{displayName}</span>
+              <span className="font-sans font-bold text-xs text-[#22303C] block truncate max-w-[120px]">{displayName}</span>
               <span className="text-[10px] text-[#61727F] block truncate max-w-[120px]">{userEmail}</span>
             </div>
           </div>

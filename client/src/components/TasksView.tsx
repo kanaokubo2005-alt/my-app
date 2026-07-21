@@ -7,7 +7,8 @@ import {
   ListFilter, 
   CheckSquare,
   Square,
-  Play
+  Play,
+  Clock
 } from "lucide-react";
 import type { Task, PriorityType, TrashItem } from "../types";
 import TaskCalendar from "./TaskCalendar";
@@ -20,6 +21,7 @@ interface TasksViewProps {
   onStartFocusSession: (task: Task) => void;
   onAddToTrash?: (item: TrashItem) => void;
   onUpdatePriority?: (id: string, priority: PriorityType) => void;
+  onUpdateDeadline?: (id: string, deadline: string) => void;
 }
 
 export default function TasksView({
@@ -29,7 +31,8 @@ export default function TasksView({
   onDeleteTask,
   onStartFocusSession,
   onAddToTrash,
-  onUpdatePriority
+  onUpdatePriority,
+  onUpdateDeadline
 }: TasksViewProps) {
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState("大学");
@@ -56,11 +59,15 @@ export default function TasksView({
   const [newCatName, setNewCatName] = useState("");
   const [showAddCatInput, setShowAddCatInput] = useState(false);
 
+  // Inline Editing Deadline ID state
+  const [editingDeadlineId, setEditingDeadlineId] = useState<string | null>(null);
+  const [tempDeadline, setTempDeadline] = useState<string>("");
+
   // Filters state
   const [filterCategory, setFilterCategory] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
 
-  // Tab state within Personal Tasks page: "list" vs "calendar" (Clear File Index style)
+  // Tab state within Personal Tasks page: "list" vs "calendar"
   const [personalSubTab, setPersonalSubTab] = useState<"list" | "calendar">("list");
 
   // Category addition handler
@@ -134,51 +141,54 @@ export default function TasksView({
     }
   };
 
+  // Inline Deadline Save
+  const handleSaveDeadline = (taskId: string, newDl: string) => {
+    if (onUpdateDeadline) {
+      onUpdateDeadline(taskId, newDl);
+    }
+    setEditingDeadlineId(null);
+  };
+
   return (
     <div className="flex-1 overflow-y-auto bg-notebook-pattern p-4 md:p-8 space-y-6 text-[#22303C]">
       
-      {/* View Header with Required Subtitle */}
-      <div className="border-b border-[#D5CFB9] pb-4">
-        <h1 className="font-brand-serif font-black text-2xl md:text-4xl text-[#244053] tracking-tight flex items-center gap-2">
+      {/* View Header - Subtitle completely removed as requested */}
+      <div className="border-b border-[#E0DACB] pb-4">
+        <h1 className="font-sans font-black text-2xl md:text-3xl text-[#244053] tracking-tight flex items-center gap-2">
           <span>個人タスク</span>
         </h1>
-        <p className="text-[#61727F] text-xs md:text-sm font-semibold mt-1">
-          手帳スタイルの個人タスク管理とスケジュールカレンダー
-        </p>
       </div>
 
-      {/* Index Tabs Switcher for Personal Page: 「NO. 1 タスク一覧」 vs 「NO. 2 カレンダー」 */}
-      <div className="flex items-center gap-2 border-b border-[#D5CFB9] pb-0">
+      {/* Subtab Switcher: NO.1 / NO.2 badges removed as requested */}
+      <div className="flex items-center gap-2 border-b border-[#E0DACB] pb-0">
         <button
           onClick={() => setPersonalSubTab("list")}
-          className={`px-5 py-2.5 rounded-t-xl text-xs md:text-sm font-bold transition-all flex items-center gap-2 cursor-pointer border-t border-x ${
+          className={`px-5 py-2.5 rounded-t-lg text-xs md:text-sm font-bold transition-all flex items-center gap-2 cursor-pointer border-t border-x ${
             personalSubTab === "list"
-              ? "bg-[#244053] text-white border-[#244053] shadow-md"
-              : "bg-[#EAE6DF] text-[#4A5D6B] border-[#D5CFB9] hover:bg-[#DFD9CE]"
+              ? "bg-[#244053] text-white border-[#244053] shadow-xs"
+              : "bg-[#F3F0E8] text-[#4A5D6B] border-[#E0DACB] hover:bg-[#EBE7DF]"
           }`}
         >
-          <span className="font-brand-serif font-black text-xs opacity-75">NO. 1</span>
           <span>タスク一覧</span>
         </button>
 
         <button
           onClick={() => setPersonalSubTab("calendar")}
-          className={`px-5 py-2.5 rounded-t-xl text-xs md:text-sm font-bold transition-all flex items-center gap-2 cursor-pointer border-t border-x ${
+          className={`px-5 py-2.5 rounded-t-lg text-xs md:text-sm font-bold transition-all flex items-center gap-2 cursor-pointer border-t border-x ${
             personalSubTab === "calendar"
-              ? "bg-[#345B73] text-white border-[#345B73] shadow-md"
-              : "bg-[#EAE6DF] text-[#4A5D6B] border-[#D5CFB9] hover:bg-[#DFD9CE]"
+              ? "bg-[#345B73] text-white border-[#345B73] shadow-xs"
+              : "bg-[#F3F0E8] text-[#4A5D6B] border-[#E0DACB] hover:bg-[#EBE7DF]"
           }`}
         >
-          <span className="font-brand-serif font-black text-xs opacity-75">NO. 2</span>
           <span>スケジュールカレンダー</span>
         </button>
       </div>
 
       {/* View Content based on Personal Index Tab */}
       {personalSubTab === "calendar" ? (
-        <div className="bg-[#F4F1EA] rounded-2xl border border-[#D5CFB9] p-4 md:p-6 shadow-sm animate-fade-in space-y-4">
-          <div className="flex items-center justify-between border-b border-[#D5CFB9] pb-3">
-            <h3 className="font-brand-serif font-bold text-[#244053] text-base md:text-lg flex items-center gap-2">
+        <div className="bg-[#FAF8F5] rounded-lg border border-[#E0DACB] p-4 md:p-6 shadow-xs animate-fade-in space-y-4 bg-notebook-pattern">
+          <div className="flex items-center justify-between border-b border-[#E0DACB] pb-3">
+            <h3 className="font-sans font-bold text-[#244053] text-base md:text-lg flex items-center gap-2">
               <CalendarIcon className="w-5 h-5 text-[#345B73]" />
               <span>月間スケジュールカレンダー</span>
             </h3>
@@ -190,9 +200,9 @@ export default function TasksView({
         /* 2-Column Split: Form (Left) & Notebook Task List (Right) */
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8 items-start">
           
-          {/* Left side: Add Task Form */}
-          <div className="bg-[#F4F1EA] rounded-2xl border border-[#D5CFB9] p-6 shadow-sm lg:col-span-1 space-y-4">
-            <h2 className="font-brand-serif font-bold text-[#244053] text-lg border-b border-[#D5CFB9] pb-3 flex items-center gap-2">
+          {/* Left side: Add Task Form (Sharper corners, light warm paper background) */}
+          <div className="bg-[#FAF8F5] rounded-lg border border-[#E0DACB] p-5 shadow-xs lg:col-span-1 space-y-4 bg-notebook-pattern">
+            <h2 className="font-sans font-bold text-[#244053] text-base md:text-lg border-b border-[#E0DACB] pb-3 flex items-center gap-2">
               <Plus className="w-5 h-5 text-[#345B73]" />
               <span>タスクの新規作成</span>
             </h2>
@@ -206,7 +216,7 @@ export default function TasksView({
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="例: レポート提出"
                   required
-                  className="w-full bg-white border border-[#D5CFB9] rounded-xl px-4 py-2.5 text-xs md:text-sm font-semibold text-[#22303C] focus:outline-hidden focus:ring-1 focus:ring-[#345B73]"
+                  className="w-full bg-[#FAF8F5] border border-[#E0DACB] rounded-md px-3.5 py-2 text-xs md:text-sm font-semibold text-[#22303C] focus:outline-hidden focus:ring-1 focus:ring-[#345B73]"
                 />
               </div>
 
@@ -223,7 +233,7 @@ export default function TasksView({
                         setCategory(e.target.value);
                       }
                     }}
-                    className="w-full bg-white border border-[#D5CFB9] rounded-xl px-3 py-2 text-xs md:text-sm font-semibold text-[#22303C] focus:outline-hidden cursor-pointer"
+                    className="w-full bg-[#FAF8F5] border border-[#E0DACB] rounded-md px-2.5 py-2 text-xs md:text-sm font-semibold text-[#22303C] focus:outline-hidden cursor-pointer"
                   >
                     {categories.map((cat) => (
                       <option key={cat} value={cat}>{cat}</option>
@@ -233,7 +243,7 @@ export default function TasksView({
 
                   {/* Custom Category Input Form */}
                   {showAddCatInput && (
-                    <div className="mt-2.5 p-2 bg-white border border-[#345B73]/40 rounded-xl space-y-2 animate-fade-in">
+                    <div className="mt-2 p-2 bg-[#FAF8F5] border border-[#345B73]/40 rounded-md space-y-2 animate-fade-in">
                       <input
                         type="text"
                         placeholder="新カテゴリー名"
@@ -246,7 +256,7 @@ export default function TasksView({
                             handleAddCategorySubmit();
                           }
                         }}
-                        className="w-full bg-[#F4F1EA] border border-[#D5CFB9] rounded-lg px-2.5 py-1.5 text-xs text-[#22303C] font-bold focus:outline-hidden"
+                        className="w-full bg-white border border-[#E0DACB] rounded-md px-2 py-1 text-xs text-[#22303C] font-bold focus:outline-hidden"
                       />
                       <div className="flex justify-end gap-1.5">
                         <button
@@ -259,7 +269,7 @@ export default function TasksView({
                         <button
                           type="button"
                           onClick={handleAddCategorySubmit}
-                          className="bg-[#345B73] text-white text-xs px-3 py-1 rounded-lg font-bold shadow-xs cursor-pointer"
+                          className="bg-[#345B73] text-white text-xs px-3 py-1 rounded-md font-bold shadow-xs cursor-pointer"
                         >
                           追加
                         </button>
@@ -273,7 +283,7 @@ export default function TasksView({
                   <select
                     value={priority}
                     onChange={(e) => setPriority(e.target.value as PriorityType)}
-                    className="w-full bg-white border border-[#D5CFB9] rounded-xl px-3 py-2 text-xs md:text-sm font-semibold text-[#22303C] focus:outline-hidden cursor-pointer"
+                    className="w-full bg-[#FAF8F5] border border-[#E0DACB] rounded-md px-2.5 py-2 text-xs md:text-sm font-semibold text-[#22303C] focus:outline-hidden cursor-pointer"
                   >
                     <option value="high">最重要 (赤)</option>
                     <option value="medium">重要 (黄)</option>
@@ -289,24 +299,24 @@ export default function TasksView({
                   value={deadline}
                   onChange={(e) => setDeadline(e.target.value)}
                   required
-                  className="w-full bg-white border border-[#D5CFB9] rounded-xl px-4 py-2.5 text-xs md:text-sm font-semibold text-[#22303C] focus:outline-hidden"
+                  className="w-full bg-[#FAF8F5] border border-[#E0DACB] rounded-md px-3.5 py-2 text-xs md:text-sm font-semibold text-[#22303C] focus:outline-hidden"
                 />
               </div>
 
               <button
                 type="submit"
-                className="w-full bg-[#244053] hover:bg-[#1A3141] text-white font-bold py-3 rounded-xl text-xs md:text-sm shadow-md transition-all cursor-pointer mt-2"
+                className="w-full bg-[#244053] hover:bg-[#1A3141] text-white font-bold py-2.5 rounded-md text-xs md:text-sm shadow-xs transition-all cursor-pointer mt-1"
               >
                 タスクを追加する
               </button>
             </form>
           </div>
 
-          {/* Right side: Notebook Grid Lined Task Area */}
+          {/* Right side: Notebook Grid Task Area */}
           <div className="lg:col-span-2 space-y-4">
             
-            {/* Controls Bar: Category Filter & Status Filter Side by Side */}
-            <div className="bg-[#F4F1EA] rounded-2xl border border-[#D5CFB9] p-4 shadow-xs flex flex-wrap items-center justify-between gap-3 text-xs md:text-sm">
+            {/* Controls Bar */}
+            <div className="bg-[#FAF8F5] rounded-lg border border-[#E0DACB] p-3.5 shadow-xs flex flex-wrap items-center justify-between gap-3 text-xs md:text-sm bg-notebook-pattern">
               <div className="flex flex-wrap items-center gap-3">
                 {/* Category Filter */}
                 <div className="flex items-center gap-1.5">
@@ -314,7 +324,7 @@ export default function TasksView({
                   <select
                     value={filterCategory}
                     onChange={(e) => setFilterCategory(e.target.value)}
-                    className="bg-white border border-[#D5CFB9] rounded-lg px-2.5 py-1.5 font-bold text-[#22303C] focus:outline-hidden cursor-pointer text-xs"
+                    className="bg-[#FAF8F5] border border-[#E0DACB] rounded-md px-2.5 py-1.5 font-bold text-[#22303C] focus:outline-hidden cursor-pointer text-xs"
                   >
                     <option value="all">すべてのカテゴリー</option>
                     {categories.map((cat) => (
@@ -329,7 +339,7 @@ export default function TasksView({
                   <select
                     value={filterStatus}
                     onChange={(e) => setFilterStatus(e.target.value)}
-                    className="bg-white border border-[#D5CFB9] rounded-lg px-2.5 py-1.5 font-bold text-[#22303C] focus:outline-hidden cursor-pointer text-xs"
+                    className="bg-[#FAF8F5] border border-[#E0DACB] rounded-md px-2.5 py-1.5 font-bold text-[#22303C] focus:outline-hidden cursor-pointer text-xs"
                   >
                     <option value="all">すべてのタスク</option>
                     <option value="active">未完了のみ</option>
@@ -344,37 +354,38 @@ export default function TasksView({
             </div>
 
             {/* Notebook Task Container */}
-            <div className="bg-[#F4F1EA] rounded-2xl border border-[#D5CFB9] p-5 md:p-6 shadow-sm space-y-3 relative overflow-hidden bg-notebook-pattern">
-              <div className="flex items-center justify-between border-b-2 border-[#D5CFB9] pb-2 mb-4">
-                <span className="font-brand-serif font-black text-[#244053] text-sm md:text-base tracking-wider uppercase flex items-center gap-2">
+            <div className="bg-[#FAF8F5] rounded-lg border border-[#E0DACB] p-4 md:p-5 shadow-xs space-y-3 relative overflow-hidden bg-notebook-pattern">
+              <div className="flex items-center justify-between border-b border-[#E0DACB] pb-2 mb-3">
+                <span className="font-sans font-bold text-[#244053] text-sm md:text-base tracking-wider flex items-center gap-2">
                   <span>📖</span>
                   <span>My Notebook Tasks</span>
                 </span>
-                <span className="text-[10px] text-[#61727F] font-bold">クリックで優先度変更 / 集中タイマー</span>
+                <span className="text-[10px] text-[#61727F] font-bold">優先度・締切は直接クリックで編集可能</span>
               </div>
 
               {processedTasks.length === 0 ? (
-                <div className="bg-white/80 rounded-xl border border-[#D5CFB9] p-8 text-center space-y-2">
+                <div className="bg-[#FAF8F5] rounded-md border border-[#E0DACB] p-8 text-center space-y-2">
                   <p className="font-bold text-[#4A5D6B] text-xs md:text-sm">該当するタスクはありません</p>
                   <p className="text-[#61727F] text-xs">新しいタスクを追加してください</p>
                 </div>
               ) : (
-                <div className="space-y-2.5">
+                <div className="space-y-2">
                   {processedTasks.map((task) => {
                     const isHigh = task.priority === "high";
                     const isMedium = task.priority === "medium";
+                    const isEditingDl = editingDeadlineId === task.id;
 
                     return (
                       <div
                         key={task.id}
-                        className={`rounded-xl border p-3.5 md:p-4 flex items-center justify-between gap-3.5 transition-all bg-white/90 shadow-xs hover:shadow-md ${
+                        className={`rounded-md border p-3 md:p-3.5 flex items-center justify-between gap-3 transition-all bg-[#FAF8F5] shadow-2xs hover:shadow-xs ${
                           task.completed 
-                            ? "border-[#D5CFB9] opacity-60 bg-slate-50/80" 
+                            ? "border-[#E0DACB] opacity-60 bg-slate-100/60" 
                             : isHigh
                               ? "border-[#C24D38]/50 bg-rose-50/40"
                               : isMedium
                                 ? "border-[#C49A45]/50 bg-amber-50/40"
-                                : "border-[#D5CFB9]"
+                                : "border-[#E0DACB]"
                         }`}
                       >
                         {/* Square Checkbox & Title */}
@@ -392,37 +403,66 @@ export default function TasksView({
                           </button>
 
                           <div className="min-w-0">
-                            <span className={`font-semibold text-xs md:text-sm text-[#22303C] block truncate ${
+                            <span className={`font-sans font-bold text-xs md:text-sm text-[#22303C] block truncate ${
                               task.completed ? "line-through text-slate-400" : ""
                             }`}>
                               {task.title}
                             </span>
                             
                             <div className="flex flex-wrap items-center gap-2 mt-1 text-[10px] text-[#61727F] font-semibold">
-                              <span className="bg-[#EAE6DF] text-[#4A5D6B] px-2 py-0.5 rounded-md border border-[#D5CFB9]">
+                              <span className="bg-[#F0EDE4] text-[#4A5D6B] px-2 py-0.5 rounded-xs border border-[#E0DACB]">
                                 {task.category}
                               </span>
                               
-                              {/* 3-Tier Interactive Priority Switcher Button */}
+                              {/* Direct Clickable Priority Switcher */}
                               <button
                                 type="button"
                                 onClick={(e) => handleTogglePriority(task, e)}
-                                title="クリックで優先度を3段階（最重要/重要/通常）切り替え"
-                                className={`px-2 py-0.5 rounded-md border font-extrabold transition-all cursor-pointer ${
+                                title="クリックで優先度を直接変更 (最重要/重要/通常)"
+                                className={`px-2 py-0.5 rounded-xs border font-bold transition-all cursor-pointer ${
                                   isHigh
                                     ? "bg-[#C24D38] text-white border-[#A63C29]"
                                     : isMedium
                                       ? "bg-[#C49A45] text-white border-[#A88033]"
-                                      : "bg-[#EAE6DF] text-[#61727F] border-[#D5CFB9]"
+                                      : "bg-[#F0EDE4] text-[#61727F] border-[#E0DACB] hover:bg-slate-200"
                                 }`}
                               >
                                 {isHigh ? "最重要" : isMedium ? "重要" : "通常"}
                               </button>
 
-                              <span className="flex items-center gap-1 text-[#61727F]">
-                                <CalendarIcon className="w-3 h-3 text-[#5F7A6E]" />
-                                締切: {task.deadline.replace("T", " ")}
-                              </span>
+                              {/* Direct Clickable Deadline Editor */}
+                              {isEditingDl ? (
+                                <input
+                                  type="datetime-local"
+                                  value={tempDeadline || task.deadline}
+                                  onChange={(e) => setTempDeadline(e.target.value)}
+                                  onBlur={() => {
+                                    if (tempDeadline) handleSaveDeadline(task.id, tempDeadline);
+                                    else setEditingDeadlineId(null);
+                                  }}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") {
+                                      handleSaveDeadline(task.id, tempDeadline || task.deadline);
+                                    }
+                                  }}
+                                  autoFocus
+                                  className="bg-white border border-[#345B73] rounded px-1 py-0.5 text-[10px] font-bold text-[#22303C]"
+                                />
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setEditingDeadlineId(task.id);
+                                    setTempDeadline(task.deadline);
+                                  }}
+                                  title="クリックで締切日時を直接編集"
+                                  className="flex items-center gap-1 text-[#61727F] hover:text-[#345B73] hover:underline cursor-pointer"
+                                >
+                                  <CalendarIcon className="w-3 h-3 text-[#5F7A6E]" />
+                                  締切: {task.deadline.replace("T", " ")} ✏️
+                                </button>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -432,7 +472,7 @@ export default function TasksView({
                           {!task.completed && (
                             <button
                               onClick={() => onStartFocusSession(task)}
-                              className="bg-[#345B73] hover:bg-[#244053] text-white font-bold px-2.5 py-1 rounded-lg text-[10px] flex items-center gap-1 shadow-2xs transition-all cursor-pointer"
+                              className="bg-[#345B73] hover:bg-[#244053] text-white font-bold px-2.5 py-1 rounded-md text-[10px] flex items-center gap-1 shadow-2xs transition-all cursor-pointer"
                             >
                               <Play className="w-3 h-3 fill-current" />
                               <span>Focus</span>
@@ -453,7 +493,7 @@ export default function TasksView({
                               onDeleteTask(task.id);
                             }}
                             title="削除（ゴミ箱へ移動）"
-                            className="p-1.5 text-slate-300 hover:text-[#C24D38] hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                            className="p-1.5 text-slate-300 hover:text-[#C24D38] hover:bg-rose-50 rounded-md transition-colors cursor-pointer"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>

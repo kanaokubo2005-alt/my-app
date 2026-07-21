@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 @theme {
-  --font-serif-brand: "Playfair Display", "Cinzel", "Noto Serif JP", serif;
+  --font-brand-serif: "Playfair Display", "Cinzel", "Noto Serif JP", serif;
   --font-sans: "Noto Sans JP", ui-sans-serif, system-ui, sans-serif;
   
   --color-deep-ocean: #244053;
@@ -10,20 +10,24 @@
   --color-sage-green: #738A7C;
   --color-burnished-red: #C24D38;
   --color-ginger-amber: #C49A45;
-  --color-warm-paper: #F4F1EA;
-  --color-slate-bg: #F0EDE6;
+  --color-warm-paper: #FAF8F5;
+  --color-slate-bg: #F8F6F1;
   --color-dark-text: #22303C;
   --color-muted-text: #61727F;
   --color-cobalt: #345B73;
+
+  --radius-card: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 12px;
 }
 
-/* Global Notebook Lined Grid Background for the entire application */
+/* Global Lightened Notebook Lined Grid Background for the entire application */
 body {
   font-family: var(--font-sans);
-  background-color: #f2efe9;
+  background-color: #FAF8F5;
   background-image: 
-    linear-gradient(to right, rgba(0, 0, 0, 0.04) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(0, 0, 0, 0.04) 1px, transparent 1px);
+    linear-gradient(to right, rgba(0, 0, 0, 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0, 0, 0, 0.03) 1px, transparent 1px);
   background-size: 24px 24px;
   color: #22303c;
   margin: 0;
@@ -31,10 +35,10 @@ body {
 }
 
 .bg-notebook-pattern {
-  background-color: #f4f1ea;
+  background-color: #FAF8F5;
   background-image: 
-    linear-gradient(to right, rgba(0, 0, 0, 0.04) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(0, 0, 0, 0.04) 1px, transparent 1px);
+    linear-gradient(to right, rgba(0, 0, 0, 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0, 0, 0, 0.03) 1px, transparent 1px);
   background-size: 24px 24px;
 }
 

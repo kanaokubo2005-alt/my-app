@@ -498,7 +498,7 @@ export default function App() {
   // 3. Authenticated App Experience
   return (
     <div
-      className={`flex h-screen bg-slate-bg text-slate-700 overflow-hidden font-sans ${theme === "cobalt" ? "theme-cobalt-heavy" : ""}`}
+      className={`flex h-screen bg-notebook-pattern text-[#22303C] overflow-hidden font-sans ${theme === "cobalt" ? "theme-cobalt-heavy" : ""}`}
     >
       {/* Mobile Top Navbar Bar */}
       <div className="fixed top-0 inset-x-0 h-14 bg-white border-b border-slate-100 flex items-center justify-between px-4 z-30 lg:hidden">

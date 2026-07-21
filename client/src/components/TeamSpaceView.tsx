@@ -627,12 +627,12 @@ export default function TeamSpaceView({ onAddToTrash }: TeamSpaceViewProps) {
   // RENDER TEAMS LIST VIEW (Initial View)
   if (!activeTeamId || !currentTeam) {
     return (
-      <div className="flex-1 overflow-y-auto bg-slate-bg p-4 md:p-8 space-y-8 animate-fade-in text-slate-700 font-sans">
+      <div className="flex-1 overflow-y-auto bg-notebook-pattern p-4 md:p-8 space-y-8 animate-fade-in text-[#22303C] font-sans">
         
         {/* Header Banner */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 pb-5">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#E0DACB] pb-5">
           <div>
-            <h1 className="font-brand-serif font-black text-2xl md:text-3xl text-[#244053] tracking-tight flex items-center gap-2">
+            <h1 className="font-sans font-black text-2xl md:text-3xl text-[#244053] tracking-tight flex items-center gap-2">
               <Users className="w-8 h-8 text-[#345B73] shrink-0" />
               <span>チームスペース</span>
             </h1>
@@ -640,7 +640,7 @@ export default function TeamSpaceView({ onAddToTrash }: TeamSpaceViewProps) {
 
           <button
             onClick={() => setShowAddTeam(true)}
-            className="bg-cobalt hover:bg-cobalt/95 text-white font-bold px-4 py-2.5 rounded-xl text-xs md:text-sm flex items-center gap-2 shadow-md shadow-cobalt/15 transition-all cursor-pointer"
+            className="bg-[#244053] hover:bg-[#1A3141] text-white font-bold px-4 py-2.5 rounded-lg text-xs md:text-sm flex items-center gap-2 shadow-xs transition-all cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             <span>新しいワークスペースを作成</span>
@@ -649,7 +649,7 @@ export default function TeamSpaceView({ onAddToTrash }: TeamSpaceViewProps) {
 
         {/* Teams Listing Grid */}
         <div className="space-y-4">
-          <h2 className="font-sans font-bold text-slate-800 text-sm md:text-base">所属している共有ワークスペース一覧</h2>
+          <h2 className="font-sans font-bold text-[#22303C] text-sm md:text-base">所属している共有ワークスペース一覧</h2>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
             {uniqueTeams.map((team) => (
@@ -658,7 +658,7 @@ export default function TeamSpaceView({ onAddToTrash }: TeamSpaceViewProps) {
                 onClick={() => {
                   setActiveTeamId(team.id);
                 }}
-                className="bg-white rounded-2xl border border-slate-100 hover:border-cobalt/35 p-6 shadow-xs hover:shadow-md transition-all flex flex-col justify-between space-y-4 group cursor-pointer"
+                className="bg-[#FAF8F5] bg-notebook-pattern rounded-lg border border-[#E0DACB] hover:border-[#345B73] p-6 shadow-2xs hover:shadow-xs transition-all flex flex-col justify-between space-y-4 group cursor-pointer"
               >
                 <div className="space-y-2">
                   <div className="flex items-start justify-between">
@@ -815,34 +815,34 @@ export default function TeamSpaceView({ onAddToTrash }: TeamSpaceViewProps) {
   const standaloneTasks = currentTeam.tasks.filter(t => !t.folderName);
 
   return (
-    <div className="flex-1 overflow-y-auto bg-slate-bg p-4 md:p-8 space-y-6 md:space-y-8 animate-fade-in text-slate-700 font-sans">
+    <div className="flex-1 overflow-y-auto bg-notebook-pattern p-4 md:p-8 space-y-6 md:space-y-8 animate-fade-in text-[#22303C] font-sans">
       
       {/* Top Navigation & Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 pb-5">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#E0DACB] pb-5">
         <div className="space-y-1.5">
           <button 
             onClick={() => setActiveTeamId(null)}
-            className="flex items-center gap-1 text-slate-400 hover:text-cobalt text-xs font-bold transition-colors cursor-pointer"
+            className="flex items-center gap-1 text-[#61727F] hover:text-[#244053] text-xs font-bold transition-colors cursor-pointer"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
             <span>← ワークスペース一覧に戻る</span>
           </button>
           
           <div className="flex items-center gap-3">
-            <h1 className="font-sans font-black text-xl md:text-2xl text-slate-800 tracking-tight">
+            <h1 className="font-sans font-black text-xl md:text-2xl text-[#244053] tracking-tight">
               {currentTeam.name}
             </h1>
-            <span className="inline-block bg-cobalt/10 text-cobalt text-[10px] font-bold px-2.5 py-0.5 rounded-full shrink-0">
+            <span className="inline-block bg-[#345B73]/10 text-[#345B73] text-[10px] font-bold px-2.5 py-0.5 rounded-full shrink-0">
               共有スペース
             </span>
           </div>
-          <p className="text-slate-500 text-xs font-semibold max-w-2xl">{currentTeam.description}</p>
+          <p className="text-[#61727F] text-xs font-semibold max-w-2xl">{currentTeam.description}</p>
         </div>
 
         {/* Action Header Buttons & Compact Edge Members */}
         <div className="flex flex-wrap items-center gap-3 self-start md:self-auto">
           {/* Edge Members Avatars */}
-          <div className="flex items-center gap-2 bg-white border border-slate-200 px-3 py-1.5 rounded-xl shadow-2xs">
+          <div className="flex items-center gap-2 bg-[#FAF8F5] bg-notebook-pattern border border-[#E0DACB] px-3 py-1.5 rounded-lg shadow-2xs">
             <div className="flex -space-x-1.5">
               {teamMembers.map((m) => (
                 <div 
@@ -855,10 +855,10 @@ export default function TeamSpaceView({ onAddToTrash }: TeamSpaceViewProps) {
                 </div>
               ))}
             </div>
-            <span className="text-xs font-bold text-slate-600">{teamMembers.length}名</span>
+            <span className="text-xs font-bold text-[#22303C]">{teamMembers.length}名</span>
             <button
               onClick={() => setShowAddMember(true)}
-              className="ml-1 text-[10px] text-cobalt hover:underline font-bold cursor-pointer"
+              className="ml-1 text-[10px] text-[#345B73] hover:underline font-bold cursor-pointer"
             >
               ＋招待
             </button>
@@ -867,7 +867,7 @@ export default function TeamSpaceView({ onAddToTrash }: TeamSpaceViewProps) {
           {/* Delete Workspace Button */}
           <button
             onClick={() => handleDeleteTeam(currentTeam.id)}
-            className="flex items-center gap-1 text-slate-400 hover:text-rose-500 hover:bg-rose-50 border border-slate-200 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer"
+            className="flex items-center gap-1 text-[#61727F] hover:text-[#C24D38] hover:bg-rose-50 border border-[#E0DACB] px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer"
             title="この共有スペースを削除"
           >
             <Trash2 className="w-3.5 h-3.5" />
@@ -883,21 +883,21 @@ export default function TeamSpaceView({ onAddToTrash }: TeamSpaceViewProps) {
         <div className="lg:col-span-7 space-y-6">
           
           {/* Folders & Tasks Header */}
-          <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-2xs space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div className="bg-[#FAF8F5] bg-notebook-pattern border border-[#E0DACB] rounded-lg p-4 md:p-5 shadow-2xs space-y-4">
+            <div className="flex items-center justify-between border-b border-[#E0DACB] pb-3">
               <div className="flex items-center gap-2">
-                <Folder className="w-5 h-5 text-cobalt" />
+                <Folder className="w-5 h-5 text-[#345B73]" />
                 <div>
-                  <h3 className="font-sans font-extrabold text-[#22303C] text-sm md:text-base">ファイル・フォルダ & 共有タスク</h3>
+                  <h3 className="font-sans font-bold text-[#22303C] text-sm md:text-base">ファイル・フォルダ & 共有タスク</h3>
                 </div>
               </div>
 
               {/* Add Folder Button */}
               <button 
                 onClick={() => setShowAddFolderModal(true)}
-                className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-3 py-1.5 rounded-xl text-xs flex items-center gap-1.5 transition-colors cursor-pointer shrink-0"
+                className="bg-[#F0EDE4] hover:bg-[#EBE7DF] text-[#22303C] font-bold px-3 py-1.5 rounded-lg text-xs flex items-center gap-1.5 transition-colors cursor-pointer shrink-0 border border-[#E0DACB]"
               >
-                <FolderPlus className="w-3.5 h-3.5 text-cobalt" />
+                <FolderPlus className="w-3.5 h-3.5 text-[#345B73]" />
                 <span>＋ ファイルを作成</span>
               </button>
             </div>
